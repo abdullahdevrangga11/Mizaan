@@ -1,0 +1,153 @@
+{
+  "nav": {
+    "donate": "donasi",
+    "track": "lacak",
+    "laz": "laz",
+    "verify": "verifikasi",
+    "feed": "aktivitas",
+    "about": "tentang",
+    "lazAdmin": "panel laz",
+    "ctaDonate": "bayar zakat sekarang"
+  },
+  "landing": {
+    "eyebrow": "// transparansi zakat di atas solana",
+    "heroTitle": "setiap rupiah zakat punya jejak.",
+    "heroSubtitle": "donasi Rp 100,000. lihat persis mustahik mana yang menerima. tidak ada potongan tersembunyi, tidak ada distribusi palsu, tidak ada akuntabilitas yang hilang.",
+    "ctaPrimary": "bayar zakat sekarang",
+    "ctaSecondary": "lihat aktivitas live",
+    "trustEyebrow": "// dipercaya oleh",
+    "howItWorksEyebrow": "// cara kerja",
+    "howItWorksTitle": "tiga tanda tangan kriptografis. nol kepercayaan buta.",
+    "step1Title": "donor menandatangani",
+    "step1Body": "anda memilih jenis donasi, jumlah, dan laz. tanda tangan kriptografis anda menjadi commitment di solana.",
+    "step2Title": "laz mendistribusikan",
+    "step2Body": "amil menetapkan donasi anda ke mustahik tertentu, mencatat tujuan, dan menandatangani keputusan distribusi.",
+    "step3Title": "mustahik mengkonfirmasi",
+    "step3Body": "mustahik menerima link aman dan mengkonfirmasi penerimaan. tiga tanda tangan, satu rantai bukti.",
+    "metricsEyebrow": "// metrik live",
+    "metricTotalDistributed": "total terdistribusi",
+    "metricMustahikReached": "mustahik tercapai",
+    "metricLazPartners": "mitra laz",
+    "metricConfirmationRate": "tingkat konfirmasi",
+    "feedEyebrow": "// aktivitas live",
+    "feedTitle": "saksikan zakat mengalir secara real-time.",
+    "feedEmpty": "menunggu aktivitas pertama hari ini…",
+    "footerCtaTitle": "siap bayar zakat dengan transparansi penuh?",
+    "footerCtaBody": "tidak perlu wallet kripto. login dengan email saja — kami yang urus sisanya."
+  },
+  "footer": {
+    "tagline": "transparansi zakat di atas solana.",
+    "links": {
+      "product": "produk",
+      "donate": "donasi",
+      "track": "lacak donasi",
+      "verify": "verifikasi publik",
+      "feed": "aktivitas live",
+      "ecosystem": "ekosistem",
+      "lazDirectory": "direktori laz",
+      "lazAdmin": "panel amil",
+      "about": "tentang mizaan",
+      "resources": "sumber daya",
+      "github": "github",
+      "docs": "dokumentasi"
+    },
+    "credits": "Mizaan © 2026 — dibangun dengan Solana Attestation Service. Devnet only."
+  },
+  "common": {
+    "loading": "memuat…",
+    "verified": "terverifikasi",
+    "pending": "menunggu",
+    "confirmed": "terkonfirmasi",
+    "by": "oleh",
+    "for": "untuk",
+    "recipient": "mustahik",
+    "donor": "donor"
+  },
+  "donate": {
+    "pageEyebrow": "// alur donasi",
+    "pageTitle": "bayar zakat dengan jejak yang bisa dibuktikan.",
+    "pageSubtitle": "enam langkah singkat. satu tanda tangan kriptografis. zakat anda tercatat di solana selamanya.",
+    "back": "kembali",
+    "next": "lanjut",
+    "skip": "lewati",
+    "stepLabel": "langkah",
+    "of": "dari",
+    "optional": "opsional",
+    "step1": {
+      "eyebrow": "// langkah 01 — jenis donasi",
+      "title": "pilih jenis donasi.",
+      "subtitle": "kewajiban yang berbeda punya perhitungan yang berbeda. pilih satu untuk memulai."
+    },
+    "step2": {
+      "eyebrow": "// langkah 02 — jumlah",
+      "title": "tentukan jumlah donasi.",
+      "subtitleZakatMal": "masukkan total kekayaan anda. kami hitung 2.5% otomatis sesuai nisab.",
+      "subtitleFitrah": "satu sha' beras setara Rp 45,000 per orang. pilih jumlah jiwa.",
+      "subtitleFree": "donasi sukarela, jumlah berapa pun. pilih cepat atau ketik manual.",
+      "wealthLabel": "total kekayaan anda (mal)",
+      "wealthHint": "harta yang dimiliki minimal satu tahun (haul). emas, tabungan, investasi, properti non-tempat tinggal.",
+      "nisabHint": "nisab saat ini",
+      "belowNisab": "di bawah nisab. tidak wajib zakat mal.",
+      "owedLabel": "zakat yang wajib (2.5%)",
+      "fitrahPeopleLabel": "jumlah jiwa",
+      "fitrahPerPerson": "per jiwa",
+      "amountLabel": "jumlah donasi",
+      "overrideHint": "anda bisa menyesuaikan jumlah secara manual.",
+      "quickPicks": "pilihan cepat"
+    },
+    "step3": {
+      "eyebrow": "// langkah 03 — pilih laz",
+      "title": "pilih laz penerima.",
+      "subtitle": "semua laz di sini sudah terverifikasi baznas dan punya identitas on-chain.",
+      "totalReceived": "total diterima",
+      "mustahikCount": "mustahik aktif"
+    },
+    "step4": {
+      "eyebrow": "// langkah 04 — preferensi",
+      "title": "preferensi kategori.",
+      "subtitle": "laz akan memprioritaskan kategori ini saat mendistribusikan zakat anda. kosongkan jika tidak ada preferensi.",
+      "anyCategory": "apa saja",
+      "skipNote": "boleh dilewati — laz akan menentukan prioritas berdasarkan kebutuhan."
+    },
+    "step5": {
+      "eyebrow": "// langkah 05 — wallet",
+      "title": "hubungkan wallet anda.",
+      "subtitle": "tidak punya wallet kripto? login dengan email saja — kami yang urus sisanya.",
+      "haveWalletTitle": "saya punya wallet",
+      "haveWalletBody": "phantom, solflare, atau wallet solana lainnya. anda kontrol penuh kunci pribadi.",
+      "haveWalletCta": "hubungkan phantom",
+      "noWalletTitle": "login email/sms",
+      "noWalletBody": "tanpa kripto knowledge. kami buatkan wallet aman pakai privy, terenkripsi di sisi anda.",
+      "noWalletCta": "lanjut dengan email",
+      "connectedAs": "terhubung sebagai"
+    },
+    "step6": {
+      "eyebrow": "// langkah 06 — review & tanda tangan",
+      "title": "periksa lalu tanda tangani.",
+      "subtitle": "satu klik akan membuat satu attestation di solana dan mentransfer idrz ke wallet laz.",
+      "summaryDonationType": "jenis donasi",
+      "summaryAmount": "jumlah",
+      "summaryLaz": "laz penerima",
+      "summaryCategory": "preferensi kategori",
+      "summaryWallet": "wallet donor",
+      "summaryNoCategory": "tidak ada preferensi",
+      "disclaimer": "tindakan ini akan: (1) menanda tangani 1 sas attestation `mizaan_donation_v1` di solana, (2) mentransfer idrz dari wallet anda ke wallet laz. transaksi tidak dapat dibatalkan setelah dikonfirmasi.",
+      "submit": "tanda tangan & kirim",
+      "submitting": "menanda tangani…"
+    },
+    "success": {
+      "eyebrow": "// donasi tercatat di solana",
+      "title": "zakat anda telah ditanda tangani.",
+      "subtitle": "attestation berhasil dibuat di solana devnet. laz akan memulai distribusi dalam 7 hari kerja.",
+      "donationPda": "donation pda",
+      "transferSig": "tx signature",
+      "amountLabel": "jumlah",
+      "lazLabel": "laz penerima",
+      "categoryLabel": "preferensi kategori",
+      "statusLabel": "status",
+      "ctaTrack": "lacak donasi anda",
+      "ctaHome": "kembali ke beranda",
+      "statusPending": "menunggu distribusi"
+    }
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "nav": {
+    "donate": "donate",
+    "track": "track",
+    "laz": "laz",
+    "verify": "verify",
+    "feed": "activity",
+    "about": "about",
+    "lazAdmin": "laz panel",
+    "ctaDonate": "pay zakat now"
+  },
+  "landing": {
+    "eyebrow": "// on-chain zakat transparency on solana",
+    "heroTitle": "every rupiah of zakat leaves a trail.",
+    "heroSubtitle": "donate Rp 100,000. see exactly which mustahik received it. no hidden cut, no fake distribution, no missing accountability.",
+    "ctaPrimary": "pay zakat now",
+    "ctaSecondary": "watch live activity",
+    "trustEyebrow": "// trusted by",
+    "howItWorksEyebrow": "// how it works",
+    "howItWorksTitle": "three cryptographic signatures. zero blind trust.",
+    "step1Title": "donor signs",
+    "step1Body": "you pick donation type, amount, and laz. your signature becomes an on-chain commitment on solana.",
+    "step2Title": "laz distributes",
+    "step2Body": "the amil assigns your donation to a specific mustahik, records the purpose, and signs the distribution decision.",
+    "step3Title": "mustahik confirms",
+    "step3Body": "the recipient receives a secure link and confirms receipt. three signatures, one verifiable chain.",
+    "metricsEyebrow": "// live metrics",
+    "metricTotalDistributed": "total distributed",
+    "metricMustahikReached": "mustahik reached",
+    "metricLazPartners": "laz partners",
+    "metricConfirmationRate": "confirmation rate",
+    "feedEyebrow": "// live activity",
+    "feedTitle": "watch zakat flow in real-time.",
+    "feedEmpty": "waiting for the first activity today…",
+    "footerCtaTitle": "ready to pay zakat with full transparency?",
+    "footerCtaBody": "no crypto wallet required. sign in with email — we handle the rest."
+  },
+  "footer": {
+    "tagline": "on-chain zakat transparency on solana.",
+    "links": {
+      "product": "product",
+      "donate": "donate",
+      "track": "track donation",
+      "verify": "public verify",
+      "feed": "live activity",
+      "ecosystem": "ecosystem",
+      "lazDirectory": "laz directory",
+      "lazAdmin": "laz panel",
+      "about": "about mizaan",
+      "resources": "resources",
+      "github": "github",
+      "docs": "docs"
+    },
+    "credits": "Mizaan © 2026 — built on the Solana Attestation Service. Devnet only."
+  },
+  "common": {
+    "loading": "loading…",
+    "verified": "verified",
+    "pending": "pending",
+    "confirmed": "confirmed",
+    "by": "by",
+    "for": "for",
+    "recipient": "recipient",
+    "donor": "donor"
+  },
+  "donate": {
+    "pageEyebrow": "// donation flow",
+    "pageTitle": "pay zakat with a provable trail.",
+    "pageSubtitle": "six short steps. one cryptographic signature. your zakat gets etched on solana, forever.",
+    "back": "back",
+    "next": "next",
+    "skip": "skip",
+    "stepLabel": "step",
+    "of": "of",
+    "optional": "optional",
+    "step1": {
+      "eyebrow": "// step 01 — donation type",
+      "title": "pick a donation type.",
+      "subtitle": "different obligations have different math. pick one to begin."
+    },
+    "step2": {
+      "eyebrow": "// step 02 — amount",
+      "title": "set your donation amount.",
+      "subtitleZakatMal": "enter your total wealth. we'll auto-compute 2.5% against the current nisab.",
+      "subtitleFitrah": "one sha' of rice ≈ Rp 45,000 per person. pick the headcount.",
+      "subtitleFree": "voluntary donation, any amount. pick a quick chip or type manually.",
+      "wealthLabel": "your total wealth (mal)",
+      "wealthHint": "wealth held for at least one full year (haul). gold, savings, investments, non-primary property.",
+      "nisabHint": "current nisab",
+      "belowNisab": "below nisab — zakat mal is not yet obligatory.",
+      "owedLabel": "zakat owed (2.5%)",
+      "fitrahPeopleLabel": "number of persons",
+      "fitrahPerPerson": "per person",
+      "amountLabel": "donation amount",
+      "overrideHint": "you can adjust the amount manually.",
+      "quickPicks": "quick picks"
+    },
+    "step3": {
+      "eyebrow": "// step 03 — pick laz",
+      "title": "pick a recipient laz.",
+      "subtitle": "every laz here is baznas-verified and has an on-chain identity attestation.",
+      "totalReceived": "total received",
+      "mustahikCount": "active mustahik"
+    },
+    "step4": {
+      "eyebrow": "// step 04 — preference",
+      "title": "category preference.",
+      "subtitle": "the laz will prioritize these categories when distributing your zakat. leave empty if you have no preference.",
+      "anyCategory": "any",
+      "skipNote": "skippable — the laz will prioritize based on need."
+    },
+    "step5": {
+      "eyebrow": "// step 05 — wallet",
+      "title": "connect your wallet.",
+      "subtitle": "no crypto wallet? log in with email — we handle the rest.",
+      "haveWalletTitle": "i have a wallet",
+      "haveWalletBody": "phantom, solflare, or any solana wallet. you keep full control of your private key.",
+      "haveWalletCta": "connect phantom",
+      "noWalletTitle": "email / sms login",
+      "noWalletBody": "no crypto know-how needed. we provision a secure wallet via privy, encrypted on your device.",
+      "noWalletCta": "continue with email",
+      "connectedAs": "connected as"
+    },
+    "step6": {
+      "eyebrow": "// step 06 — review & sign",
+      "title": "review then sign.",
+      "subtitle": "one click creates one solana attestation and transfers idrz to the laz wallet.",
+      "summaryDonationType": "donation type",
+      "summaryAmount": "amount",
+      "summaryLaz": "recipient laz",
+      "summaryCategory": "category preference",
+      "summaryWallet": "donor wallet",
+      "summaryNoCategory": "no preference",
+      "disclaimer": "this action will: (1) sign 1 sas attestation `mizaan_donation_v1` on solana, (2) transfer idrz from your wallet to the laz wallet. transactions cannot be undone once confirmed.",
+      "submit": "sign & send",
+      "submitting": "signing…"
+    },
+    "success": {
+      "eyebrow": "// donation recorded on solana",
+      "title": "your zakat has been signed.",
+      "subtitle": "attestation successfully created on solana devnet. the laz will begin distribution within 7 business days.",
+      "donationPda": "donation pda",
+      "transferSig": "tx signature",
+      "amountLabel": "amount",
+      "lazLabel": "recipient laz",
+      "categoryLabel": "category preference",
+      "statusLabel": "status",
+      "ctaTrack": "track your donation",
+      "ctaHome": "back to home",
+      "statusPending": "pending distribution"
+    }
+  }
+}

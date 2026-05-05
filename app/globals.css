@@ -1,26 +1,181 @@
 @import "tailwindcss";
 
+/* ---------- Mizaan design tokens (paper.design lineage, Solana accent) ---------- */
+@theme {
+  /* Surfaces */
+  --color-bg: #181818;
+  --color-surface: #1a1a1a;
+  --color-card: #1a1a1a;
+  --color-card-hi: #222222;
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.10);
+  --color-border-accent: rgba(20, 241, 149, 0.18);
+
+  /* Brand accent — Solana green, used sparingly for verified states */
+  --color-primary: #14F195;
+  --color-primary-hover: #11D985;
+  --color-primary-soft: rgba(20, 241, 149, 0.10);
+
+  /* Text — warm cream-white, NOT pure white */
+  --color-text: #efefe4;
+  --color-text-secondary: rgba(239, 239, 228, 0.65);
+  --color-text-muted: rgba(239, 239, 228, 0.42);
+  --color-text-faint: rgba(239, 239, 228, 0.30);
+
+  /* Semantic */
+  --color-success: #4ADE80;
+  --color-warning: #FF9F0A;
+  --color-danger: #EF4444;
+
+  /* Fonts (loaded via next/font) */
+  --font-sans: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "JetBrains Mono", monospace;
+
+  /* Radius scale */
+  --radius-card: 16px;
+  --radius-md: 12px;
+  --radius-input: 10px;
+  --radius-btn: 9px;
+  --radius-pill: 20px;
+}
+
+/* ---------- Base reset ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* paper.design signature: lowercase headlines + tight tracking */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+/* Selection */
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+/* ---------- Reusable component recipes ---------- */
+
+/* Primary card — green-accented gradient + inset stroke */
+.card-mizaan {
+  background: var(--color-card);
+  background-image: linear-gradient(
+    180deg,
+    rgba(20, 241, 149, 0.05) 0%,
+    transparent 45%
+  );
+  border: 1px solid rgba(20, 241, 149, 0.13);
+  box-shadow: inset 0 1px 0 rgba(20, 241, 149, 0.18);
+  border-radius: var(--radius-card);
+}
+
+/* Neutral card — same recipe, white tint instead of green */
+.card-neutral {
+  background: var(--color-card);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    transparent 45%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-card);
+}
+
+/* paper.design grid backdrop — apply to footer reveal, CTV, roadmap sections */
+.grid-backdrop {
+  background-image:
+    linear-gradient(to right, rgba(239, 239, 228, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(239, 239, 228, 0.06) 1px, transparent 1px);
+  background-size: 10px 10px;
+  pointer-events: none;
+}
+
+/* Subtle grid backdrop for normal sections */
+.grid-backdrop-subtle {
+  background-image:
+    linear-gradient(to right, rgba(239, 239, 228, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(239, 239, 228, 0.025) 1px, transparent 1px);
+  background-size: 10px 10px;
+  pointer-events: none;
+}
+
+/* Eyebrow label — JetBrains mono, 12px, lowercase, "// prefix" */
+.eyebrow {
+  font-family: var(--font-mono), ui-monospace, "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-text-muted);
+  text-transform: lowercase;
+}
+
+/* Hover lift for cards */
+.lift {
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 200ms ease;
+}
+.lift:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-border-accent);
+}
+
+/* Pill chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono), ui-monospace, "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-secondary);
+}
+.chip-verified {
+  background: var(--color-primary-soft);
+  border-color: var(--color-border-accent);
+  color: var(--color-primary);
+}
+
+/* Visually-hidden helper */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
