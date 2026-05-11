@@ -7,7 +7,6 @@ import {
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
-  getBase58Decoder,
   pipe,
   sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayer,
@@ -100,21 +99,36 @@ function getCredentialPda(): Address {
   return pda as Address;
 }
 
-const base58Decoder = getBase58Decoder();
+// Inline base58 encoder. Both `bs58` (npm) and `@solana/codecs-strings`
+// crash on Vercel with "alphabet4 is not defined" because their bundled
+// code references a closure-scoped variable that the serverless function
+// builder mangles. A self-contained encoder dodges the whole problem.
+const BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+function bytesToBase58(bytes: Uint8Array): string {
+  if (bytes.length === 0) return "";
+  let zeros = 0;
+  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+
+  let num = 0n;
+  for (const b of bytes) num = (num << 8n) | BigInt(b);
+
+  let result = "";
+  while (num > 0n) {
+    result = BASE58_ALPHABET[Number(num % 58n)] + result;
+    num /= 58n;
+  }
+  return "1".repeat(zeros) + result;
+}
 
 /**
  * Generate a fresh nonce address for an attestation. Using a random keypair
  * pubkey guarantees PDA uniqueness even when (credential, schema, donor)
  * recur — we never need to sign with it, only reference the pubkey.
- *
- * Implementation note: we deliberately avoid the `bs58` npm package — Vercel's
- * esbuild bundling has a known issue where it mangles its module-level
- * `alphabet4` const into a ReferenceError at runtime. Using @solana/kit's
- * `getBase58Decoder` keeps everything in the same dependency tree.
  */
 function randomNonceAddress(): Address {
-  const bytes = randomBytes(32);
-  return base58Decoder.decode(bytes) as Address;
+  return bytesToBase58(randomBytes(32)) as Address;
 }
 
 export interface AttestationResult {
@@ -190,7 +204,7 @@ async function createAttestation(
   if (!sigBytes) {
     throw new Error("No signature found on signed transaction");
   }
-  const signature = base58Decoder.decode(sigBytes);
+  const signature = bytesToBase58(sigBytes);
 
   return { pda: attestationPda, signature };
 }
