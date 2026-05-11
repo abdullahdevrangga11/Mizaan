@@ -68,6 +68,10 @@ export default async function DonationSuccessPage({
   }
   const lazName = getMockLazName(donation.lazId);
 
+  const solscanAccount = (pda: string) =>
+    `https://solscan.io/account/${pda}?cluster=devnet`;
+  const solscanTx = (sig: string) => `https://solscan.io/tx/${sig}?cluster=devnet`;
+
   const rows: Array<{ label: string; value: React.ReactNode; mono?: boolean }> =
     [
       {
@@ -93,12 +97,30 @@ export default async function DonationSuccessPage({
       },
       {
         label: t("donationPda"),
-        value: shortenAddress(donation.donationCommitmentPda, 8, 8),
+        value: (
+          <a
+            href={solscanAccount(donation.donationCommitmentPda)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-1 underline-offset-2 transition-colors hover:text-primary"
+          >
+            {shortenAddress(donation.donationCommitmentPda, 8, 8)} ↗
+          </a>
+        ),
         mono: true,
       },
       {
         label: t("transferSig"),
-        value: shortenAddress(donation.tokenTransferSignature, 8, 8),
+        value: (
+          <a
+            href={solscanTx(donation.tokenTransferSignature)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-1 underline-offset-2 transition-colors hover:text-primary"
+          >
+            {shortenAddress(donation.tokenTransferSignature, 8, 8)} ↗
+          </a>
+        ),
         mono: true,
       },
       {
@@ -173,8 +195,18 @@ export default async function DonationSuccessPage({
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:mt-12 sm:flex-row sm:flex-wrap">
-              <Link href={`/track/${donation.donorWallet}`} className="w-full sm:w-auto">
+              <a
+                href={solscanAccount(donation.donationCommitmentPda)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto"
+              >
                 <Button size="lg" className="w-full lowercase sm:w-auto">
+                  view on solana explorer ↗
+                </Button>
+              </a>
+              <Link href={`/track/${donation.donorWallet}`} className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="w-full lowercase sm:w-auto">
                   {t("ctaTrack")} →
                 </Button>
               </Link>
