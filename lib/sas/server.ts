@@ -1,13 +1,13 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import bs58 from "bs58";
 import {
   appendTransactionMessageInstruction,
   assertIsTransactionWithinSizeLimit,
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
+  getBase58Decoder,
   pipe,
   sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayer,
@@ -100,14 +100,21 @@ function getCredentialPda(): Address {
   return pda as Address;
 }
 
+const base58Decoder = getBase58Decoder();
+
 /**
  * Generate a fresh nonce address for an attestation. Using a random keypair
  * pubkey guarantees PDA uniqueness even when (credential, schema, donor)
  * recur — we never need to sign with it, only reference the pubkey.
+ *
+ * Implementation note: we deliberately avoid the `bs58` npm package — Vercel's
+ * esbuild bundling has a known issue where it mangles its module-level
+ * `alphabet4` const into a ReferenceError at runtime. Using @solana/kit's
+ * `getBase58Decoder` keeps everything in the same dependency tree.
  */
 function randomNonceAddress(): Address {
   const bytes = randomBytes(32);
-  return bs58.encode(bytes) as Address;
+  return base58Decoder.decode(bytes) as Address;
 }
 
 export interface AttestationResult {
@@ -183,7 +190,7 @@ async function createAttestation(
   if (!sigBytes) {
     throw new Error("No signature found on signed transaction");
   }
-  const signature = bs58.encode(sigBytes);
+  const signature = base58Decoder.decode(sigBytes);
 
   return { pda: attestationPda, signature };
 }
