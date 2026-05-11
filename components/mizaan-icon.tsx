@@ -7,18 +7,16 @@ interface MizaanIconProps {
 }
 
 /**
- * Mizaan brand mark — three gradient-green crescents stacked into an
+ * Mizaan brand mark — three solid green crescents stacked into an
  * abstract "scale" (Arabic: ميزان). Sized via `className` like any
  * other element; the SVG fills its container.
  *
- * IDs inside the gradient defs are namespaced so multiple instances on
- * the same page don't collide. (Browsers de-duplicate matching defs but
- * we keep it tidy.)
+ * Kept in sync with `app/icon.svg` (the favicon source of truth).
  */
 export function MizaanIcon({ className, title }: MizaanIconProps) {
   return (
     <svg
-      viewBox="0 0 840 973"
+      viewBox="0 0 838 971"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role={title ? "img" : "presentation"}
@@ -29,62 +27,16 @@ export function MizaanIcon({ className, title }: MizaanIconProps) {
       <path
         fillRule="evenodd"
         clipRule="evenodd"
-        d="M740.77 406.976C795.088 609.693 673.706 818.351 469.655 873.026C265.604 927.701 56.155 807.69 1.83716 604.973L740.77 406.976Z"
-        fill="url(#mizaan-icon-grad-1)"
-        stroke="#5BE791"
-        strokeWidth="3"
+        d="M738.933 405.476C793.251 608.193 671.869 816.851 467.818 871.526C263.767 926.201 54.3179 806.19 0 603.473L738.933 405.476Z"
+        fill="#5BE791"
       />
       <path
         fillRule="evenodd"
         clipRule="evenodd"
-        d="M579.787 328.145C546.196 453.509 417.337 527.906 291.972 494.315C166.608 460.724 92.2107 331.865 125.802 206.5L579.787 328.145Z"
-        fill="url(#mizaan-icon-grad-2)"
-        stroke="#5BE791"
-        strokeWidth="3"
+        d="M577.95 326.645C544.359 452.009 415.499 526.406 290.135 492.815C164.77 459.224 90.3735 330.365 123.965 205L577.95 326.645Z"
+        fill="#5BE791"
       />
-      <circle
-        cx="483.479"
-        cy="149"
-        r="147.5"
-        fill="url(#mizaan-icon-grad-3)"
-        stroke="#5BE791"
-        strokeWidth="3"
-      />
-      <defs>
-        <linearGradient
-          id="mizaan-icon-grad-1"
-          x1="371.304"
-          y1="505.974"
-          x2="469.655"
-          y2="873.026"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#5BE791" />
-          <stop offset="0.75" stopColor="#171717" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient
-          id="mizaan-icon-grad-2"
-          x1="352.795"
-          y1="267.322"
-          x2="291.972"
-          y2="494.315"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#5BE791" />
-          <stop offset="0.75" stopColor="#171717" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient
-          id="mizaan-icon-grad-3"
-          x1="483.479"
-          y1="1.5"
-          x2="483.479"
-          y2="296.5"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#5BE791" />
-          <stop offset="0.75" stopColor="#171717" stopOpacity="0" />
-        </linearGradient>
-      </defs>
+      <circle cx="481.642" cy="147.5" r="147.5" fill="#5BE791" />
     </svg>
   );
 }
