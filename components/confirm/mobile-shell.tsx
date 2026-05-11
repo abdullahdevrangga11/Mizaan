@@ -1,6 +1,7 @@
 "use client";
 
 import { Wordmark } from "@/components/wordmark";
+import { MizaanIcon } from "@/components/mizaan-icon";
 
 interface MobileShellProps {
   /** Status bar clock label (e.g. "10:32"). */
@@ -96,12 +97,8 @@ export function MobileShell({
 
         {/* wordmark row */}
         <div className="flex shrink-0 items-center gap-2.5 px-5.5 pt-3">
-          <span
-            aria-hidden
-            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-[#14F195] font-['Plus_Jakarta_Sans',system-ui,sans-serif] text-[15px] font-bold leading-none text-[#0A0A0A]"
-            style={{ boxShadow: "0 4px 12px rgba(20,241,149,0.20)" }}
-          >
-            M
+          <span aria-hidden className="flex size-8 shrink-0 items-center justify-center">
+            <MizaanIcon />
           </span>
           <Wordmark
             showDot={false}

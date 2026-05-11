@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/navigation";
 import type { SupportedLocale } from "@/lib/constants";
+import { MizaanIcon } from "./mizaan-icon";
 
 const COPY = {
   id: {
@@ -144,10 +145,8 @@ export function FooterReveal({
           {/* Brand block */}
           <div className="flex max-w-[280px] shrink-0 flex-col gap-4 sm:gap-5">
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-[9px] bg-[#14F195]">
-                <span className="text-lg font-bold leading-[22px] tracking-[-0.02em] text-[#0A0A0A]">
-                  M
-                </span>
+              <span className="flex size-9 shrink-0 items-center justify-center">
+                <MizaanIcon />
               </span>
               <span className="text-lg font-medium leading-[22px] tracking-[-0.02em] text-[#EFEFE4]">
                 mizaan

@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "./locale-switcher";
+import { MizaanIcon } from "./mizaan-icon";
 
 type NavVariant = "landing" | "compact";
 
@@ -58,10 +59,8 @@ export function Navbar({ locale = "id", variant = "landing" }: NavbarProps) {
       aria-label="primary"
     >
       <Link href="/" className="flex items-center gap-2.5">
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#14F195]">
-          <span className="font-bold tracking-[-0.02em] text-[13px] leading-4 text-[#0A0A0A]">
-            M
-          </span>
+        <span className="flex size-6 shrink-0 items-center justify-center">
+          <MizaanIcon />
         </span>
         <span className="text-base font-medium tracking-[-0.02em] leading-5 text-[#EFEFE4]">
           mizaan

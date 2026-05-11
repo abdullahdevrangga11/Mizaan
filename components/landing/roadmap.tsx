@@ -1,4 +1,5 @@
 import type { SupportedLocale } from "@/lib/constants";
+import { MizaanIcon } from "@/components/mizaan-icon";
 
 const COPY = {
   id: {
@@ -119,10 +120,10 @@ export function Roadmap({ locale }: { locale: SupportedLocale }) {
           </div>
           <div className="relative flex flex-col items-center gap-3.5">
             <span
-              className="flex size-16 shrink-0 items-center justify-center rounded-[14px] bg-[#14F195]"
-              style={{ boxShadow: "0 8px 32px rgba(20,241,149,0.20)" }}
+              className="flex size-16 shrink-0 items-center justify-center"
+              style={{ filter: "drop-shadow(0 8px 32px rgba(20,241,149,0.30))" }}
             >
-              <span className="text-[32px] font-bold leading-10 tracking-[-0.03em] text-[#0A0A0A]">M</span>
+              <MizaanIcon />
             </span>
             <span className="font-mono text-[11px] leading-[14px] tracking-[0.06em] text-[#EFEFE46B]">
               {t.badge}
@@ -143,7 +144,7 @@ export function Roadmap({ locale }: { locale: SupportedLocale }) {
               }}
             />
             <div className="relative grid grid-cols-[repeat(3,28px)] grid-rows-[repeat(3,28px)] gap-1.5">
-              <span className="flex items-center justify-center rounded-md bg-[#14F195] text-[11px] leading-[14px] font-bold text-[#0A0A0A]">M</span>
+              <span className="flex items-center justify-center"><MizaanIcon /></span>
               <span className="rounded-md bg-[#3D5AFE]" />
               <span className="rounded-md bg-[#9C27B0]" />
               <span className="rounded-md bg-[#FF5722]" />

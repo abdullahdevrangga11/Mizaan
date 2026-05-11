@@ -11,6 +11,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SupportedLocale } from "@/lib/constants";
+import { MizaanIcon } from "@/components/mizaan-icon";
 
 export type AdminNavKey =
   | "incoming"
@@ -189,10 +190,8 @@ export function AdminShell({
         {/* Brand + LAZ chip */}
         <div className="flex flex-col gap-3.5 border-b border-[#FFFFFF0F] px-4.5 py-5">
           <Link href="/" className="flex items-center gap-2.25">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#14F195]">
-              <span className="text-[13px] leading-4 font-bold text-[#0A0A0A]">
-                M
-              </span>
+            <span className="flex size-6 shrink-0 items-center justify-center">
+              <MizaanIcon />
             </span>
             <span className="flex flex-col">
               <span className="text-sm leading-[18px] font-medium tracking-[-0.015em] text-[#EFEFE4]">
@@ -278,10 +277,8 @@ export function AdminShell({
               className="flex shrink-0 items-center gap-1.5 lg:hidden"
               aria-label="mizaan"
             >
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-[#14F195]">
-                <span className="text-[11px] leading-3 font-bold text-[#0A0A0A]">
-                  M
-                </span>
+              <span className="flex size-5 shrink-0 items-center justify-center">
+                <MizaanIcon />
               </span>
             </Link>
             <span aria-hidden className="font-mono text-[11px] leading-3.5 text-[#EFEFE44D] lg:hidden">
