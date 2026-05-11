@@ -16,6 +16,29 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  // Force these packages to load from node_modules at runtime instead of
+  // being bundled into the serverless function. The @solana/* codec
+  // packages contain a closure pattern (the "alphabet4" var) that Vercel's
+  // bundler mangles into a ReferenceError. Externalising them sidesteps
+  // the issue without changing any application code.
+  serverExternalPackages: [
+    "sas-lib",
+    "@solana/kit",
+    "@solana/signers",
+    "@solana/transactions",
+    "@solana/transaction-messages",
+    "@solana/addresses",
+    "@solana/codecs",
+    "@solana/codecs-core",
+    "@solana/codecs-strings",
+    "@solana/codecs-numbers",
+    "@solana/codecs-data-structures",
+    "@solana/errors",
+    "@solana/rpc",
+    "@solana/rpc-subscriptions",
+    "borsher",
+    "borsh",
+  ],
 };
 
 export default withNextIntl(nextConfig);
