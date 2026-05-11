@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ApiResult, Laz } from "@/lib/types";
+import type {
+  ApiResult,
+  Laz,
+  LazJurisdictionLevel,
+  LazStatus,
+} from "@/lib/types";
 import type { LazRow } from "@/lib/supabase/types";
 
 function rowToLaz(row: LazRow): Laz {
@@ -11,11 +16,11 @@ function rowToLaz(row: LazRow): Laz {
     name: row.name,
     registrationNumber: row.registration_number,
     region: row.region,
-    jurisdictionLevel: row.jurisdiction_level,
+    jurisdictionLevel: row.jurisdiction_level as LazJurisdictionLevel,
     websiteUrl: row.website_url,
     contactEmail: row.contact_email,
     logoUrl: row.logo_url,
-    status: row.status,
+    status: row.status as LazStatus,
     totalReceivedIdrz: BigInt(row.total_received_idrz),
     totalDistributedIdrz: BigInt(row.total_distributed_idrz),
     mustahikCount: row.mustahik_count,

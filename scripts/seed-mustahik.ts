@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./_lib/load-env";
 
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";

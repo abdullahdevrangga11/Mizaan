@@ -42,3 +42,5 @@ next-env.d.ts
 
 # Mizaan — devnet keypairs (NEVER commit; regenerate via `pnpm setup:devnet`)
 /keypairs
+supabase/.temp/
+keypairs/

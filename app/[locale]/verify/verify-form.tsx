@@ -1,12 +1,50 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Category } from "@/lib/types";
 import type { SupportedLocale } from "@/lib/constants";
 import { SearchInput, type VerifyTab } from "@/components/verify/search-input";
 import { EmptyState } from "@/components/verify/empty-state";
 import { ResultCard } from "@/components/verify/result-card";
 import { ChainRow, type DistributionRow } from "@/components/verify/chain-row";
+
+// Wire response shape from GET /api/verify/[identifier].
+interface VerifyApiResponse {
+  donation: {
+    id: string;
+    donationCommitmentPda: string;
+    donorWallet: string;
+    amountIdrz: string;
+    donationType: string;
+    tokenTransferSignature: string;
+    status: string;
+    createdAt: string;
+    laz: { slug: string; name: string; region: string; wallet_address: string };
+  };
+  distributions: Array<{
+    id: string;
+    distributionDecisionPda: string;
+    mustahikInitials: string | null;
+    mustahikRegion: string | null;
+    amountIdrz: string;
+    category: string;
+    asnaf: string;
+    purposeDescription: string;
+    tokenTransferSignature: string;
+    receiptPda: string | null;
+    receiptConfirmedAt: string | null;
+    createdAt: string;
+  }>;
+}
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const month = d.toLocaleString("en-US", { month: "short" }).toLowerCase();
+  const day = d.getDate();
+  const hour = d.getHours().toString().padStart(2, "0");
+  const min = d.getMinutes().toString().padStart(2, "0");
+  return `${day} ${month} · ${hour}:${min}`;
+}
 
 interface VerifyFormProps {
   locale: SupportedLocale;
@@ -245,50 +283,97 @@ export function VerifyForm({ locale }: VerifyFormProps) {
   const c = copy[locale === "en" ? "en" : "id"];
   const [value, setValue] = useState("");
   const [activeTab, setActiveTab] = useState<VerifyTab>("WALLET");
+  const [apiData, setApiData] = useState<VerifyApiResponse | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const trimmed = value.trim();
   const isResolved = trimmed.length >= 32;
 
+  // Fetch the real chain whenever the user pastes a viable identifier.
+  // Debounced lightly to avoid hammering the API on each keystroke.
+  useEffect(() => {
+    if (!isResolved) {
+      setApiData(null);
+      setApiError(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      setApiError(null);
+      try {
+        const res = await fetch(`/api/verify/${encodeURIComponent(trimmed)}`, {
+          cache: "no-store",
+        });
+        const json = (await res.json()) as
+          | { data: VerifyApiResponse; error: null }
+          | { data: null; error: { code: string; message: string } };
+        if (cancelled) return;
+        if (!res.ok || json.error) {
+          setApiData(null);
+          setApiError(json.error?.message ?? `HTTP ${res.status}`);
+        } else {
+          setApiData(json.data);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setApiError(err instanceof Error ? err.message : "fetch failed");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isResolved, trimmed]);
+
   const distributions: DistributionRow[] = useMemo(() => {
-    if (!isResolved) return [];
-    return MOCK_DISTRIBUTIONS.map((d) => ({
+    if (!apiData) return [];
+    const donorTime = formatTimestamp(apiData.donation.createdAt);
+    return apiData.distributions.map((d) => ({
       id: d.id,
-      recipientLabel: d.recipient,
-      purpose: d.purpose,
-      region: d.region,
-      category: d.category,
-      amountIdrz: d.amountIdrz,
+      recipientLabel: d.mustahikInitials ?? "(anonymized)",
+      purpose: d.purposeDescription,
+      region: d.mustahikRegion ?? "",
+      category: d.category as Category,
+      amountIdrz: BigInt(d.amountIdrz),
       steps: [
         {
           n: "1",
           schema: "DONATION_V1",
           signatoryName: "Donor wallet",
-          signatoryWallet: trimmed,
-          timestamp: d.donorTime,
-          blockHeight: d.donorBlock,
-          pda: d.donorPda,
+          signatoryWallet: apiData.donation.donorWallet,
+          timestamp: donorTime,
+          blockHeight: "—",
+          pda: apiData.donation.donationCommitmentPda,
         },
         {
           n: "2",
           schema: "DISTRIBUTION_V1",
-          signatoryName: d.amilName,
-          signatoryWallet: d.amilWallet,
-          timestamp: d.amilTime,
-          blockHeight: d.amilBlock,
-          pda: d.amilPda,
+          signatoryName: `${apiData.donation.laz.name} (LAZ amil)`,
+          signatoryWallet: apiData.donation.laz.wallet_address,
+          timestamp: formatTimestamp(d.createdAt),
+          blockHeight: "—",
+          pda: d.distributionDecisionPda,
         },
         {
           n: "3",
           schema: "RECEIPT_V1",
-          signatoryName: d.mustahikInitial,
-          signatoryWallet: d.mustahikWallet,
-          timestamp: d.receiptTime,
-          blockHeight: d.receiptBlock,
-          pda: d.receiptPda,
+          signatoryName: d.mustahikInitials
+            ? `${d.mustahikInitials} (mustahik)`
+            : "(unconfirmed)",
+          signatoryWallet: "",
+          timestamp: d.receiptConfirmedAt
+            ? formatTimestamp(d.receiptConfirmedAt)
+            : "pending",
+          blockHeight: "—",
+          pda: d.receiptPda ?? "—",
         },
       ],
     }));
-  }, [isResolved, trimmed]);
+  }, [apiData]);
 
   const totalIdrz = useMemo(
     () =>

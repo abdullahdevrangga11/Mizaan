@@ -40,3 +40,15 @@ export function isSupabaseConfigured(): boolean {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 }
+
+/** Detect whether the SAS credential + donation schema are provisioned.
+ *  Real-mode attestation writes require both. If false, API routes should
+ *  fall back to mock signatures so the UI demo keeps working before
+ *  `pnpm setup:devnet` has been run successfully on-chain. */
+export function isSasConfigured(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SAS_CREDENTIAL_PDA &&
+      process.env.NEXT_PUBLIC_SAS_DONATION_SCHEMA &&
+      process.env.LAZ_AUTHORITY_KEYPAIR,
+  );
+}

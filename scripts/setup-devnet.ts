@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./_lib/load-env";
 
 import { resolve } from "node:path";
 import {
@@ -12,17 +12,33 @@ import {
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
+import {
+  appendTransactionMessageInstruction,
+  assertIsTransactionWithinSizeLimit,
+  createTransactionMessage,
+  pipe,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+  type Address,
+} from "@solana/kit";
+import { signTransactionMessageWithSigners } from "@solana/signers";
+import {
+  deriveCredentialPda,
+  deriveSchemaPda,
+  getCreateCredentialInstruction,
+  getCreateSchemaInstruction,
+} from "sas-lib";
 
 import { isEnvSet, optionalEnv, requireEnv } from "./_lib/env";
 import {
   keypairToSecretJson,
   loadOrCreateKeypair,
 } from "./_lib/keypair";
-
-// TODO: install sas-lib / gill — referenced by SRS §3.3
-// Once available, replace the stubbed SAS section below with real calls.
-// import { createCredential, createSchema } from "sas-lib";
-// import { generateKeyPairSigner } from "gill";
+import {
+  createKitClient,
+  loadKeypairAsSigner,
+  SAS_TYPE,
+} from "./_lib/sas-client";
 
 const LOG = "[mizaan/setup]";
 const KEYPAIR_DIR = resolve(process.cwd(), "keypairs");
@@ -52,89 +68,105 @@ interface OutputEnv {
 
 const out: OutputEnv = {};
 
+interface SchemaField {
+  name: string;
+  type: number; // SAS compact layout byte (see SAS_TYPE)
+}
+
 interface SchemaDef {
   envKey: keyof OutputEnv;
   name: string;
-  layout: ReadonlyArray<{ name: string; type: string }>;
+  description: string;
+  fields: ReadonlyArray<SchemaField>;
 }
 
+// SAS doesn't have a native Pubkey type — wallet addresses are stored as
+// base58 strings (SAS_TYPE.STRING). Pubkey serialization on-chain would save
+// bytes but isn't supported by sas-lib's borsh schema.
 const SAS_SCHEMAS: ReadonlyArray<SchemaDef> = [
   {
     envKey: "NEXT_PUBLIC_SAS_DONATION_SCHEMA",
     name: "MIZAAN_DONATION_V1",
-    layout: [
-      { name: "donorWallet", type: "Pubkey" },
-      { name: "lazWallet", type: "Pubkey" },
-      { name: "amountIDRZ", type: "u64" },
-      { name: "donationType", type: "u8" },
-      { name: "categoryPreference", type: "u8" },
-      { name: "donorMessageHash", type: "String" },
-      { name: "createdAt", type: "i64" },
-      { name: "tokenTransferSignature", type: "String" },
+    description: "Mizaan donor commitment attestation",
+    fields: [
+      { name: "donorWallet", type: SAS_TYPE.STRING },
+      { name: "lazWallet", type: SAS_TYPE.STRING },
+      { name: "amountIDRZ", type: SAS_TYPE.U64 },
+      { name: "donationType", type: SAS_TYPE.U8 },
+      { name: "categoryPreference", type: SAS_TYPE.U8 },
+      { name: "donorMessageHash", type: SAS_TYPE.STRING },
+      { name: "createdAt", type: SAS_TYPE.I64 },
+      { name: "tokenTransferSignature", type: SAS_TYPE.STRING },
     ],
   },
   {
     envKey: "NEXT_PUBLIC_SAS_DISTRIBUTION_SCHEMA",
     name: "MIZAAN_DISTRIBUTION_V1",
-    layout: [
-      { name: "donationCommitmentPDA", type: "Pubkey" },
-      { name: "lazWallet", type: "Pubkey" },
-      { name: "mustahikWallet", type: "Pubkey" },
-      { name: "amountIDRZ", type: "u64" },
-      { name: "category", type: "u8" },
-      { name: "asnaf", type: "u8" },
-      { name: "mustahikIdHash", type: "String" },
-      { name: "purposeDescription", type: "String" },
-      { name: "createdAt", type: "i64" },
-      { name: "tokenTransferSignature", type: "String" },
+    description: "Mizaan LAZ distribution decision attestation",
+    fields: [
+      { name: "donationCommitmentPDA", type: SAS_TYPE.STRING },
+      { name: "lazWallet", type: SAS_TYPE.STRING },
+      { name: "mustahikWallet", type: SAS_TYPE.STRING },
+      { name: "amountIDRZ", type: SAS_TYPE.U64 },
+      { name: "category", type: SAS_TYPE.U8 },
+      { name: "asnaf", type: SAS_TYPE.U8 },
+      { name: "mustahikIdHash", type: SAS_TYPE.STRING },
+      { name: "purposeDescription", type: SAS_TYPE.STRING },
+      { name: "createdAt", type: SAS_TYPE.I64 },
+      { name: "tokenTransferSignature", type: SAS_TYPE.STRING },
     ],
   },
   {
     envKey: "NEXT_PUBLIC_SAS_RECEIPT_SCHEMA",
     name: "MIZAAN_RECEIPT_V1",
-    layout: [
-      { name: "distributionDecisionPDA", type: "Pubkey" },
-      { name: "mustahikWallet", type: "Pubkey" },
-      { name: "lazWallet", type: "Pubkey" },
-      { name: "confirmedAt", type: "i64" },
-      { name: "confirmationMethod", type: "u8" },
-      { name: "thankYouMessageHash", type: "String" },
-      { name: "magicLinkConsentHash", type: "String" },
+    description: "Mizaan mustahik receipt confirmation attestation",
+    fields: [
+      { name: "distributionDecisionPDA", type: SAS_TYPE.STRING },
+      { name: "mustahikWallet", type: SAS_TYPE.STRING },
+      { name: "lazWallet", type: SAS_TYPE.STRING },
+      { name: "confirmedAt", type: SAS_TYPE.I64 },
+      { name: "confirmationMethod", type: SAS_TYPE.U8 },
+      { name: "thankYouMessageHash", type: SAS_TYPE.STRING },
+      { name: "magicLinkConsentHash", type: SAS_TYPE.STRING },
     ],
   },
   {
     envKey: "NEXT_PUBLIC_SAS_LAZ_IDENTITY_SCHEMA",
     name: "MIZAAN_LAZ_IDENTITY_V1",
-    layout: [
-      { name: "lazWallet", type: "Pubkey" },
-      { name: "lazNameHash", type: "String" },
-      { name: "lazSlug", type: "String" },
-      { name: "lazRegistrationNumber", type: "String" },
-      { name: "websiteURL", type: "String" },
-      { name: "contactEmail", type: "String" },
-      { name: "region", type: "String" },
-      { name: "jurisdictionLevel", type: "u8" },
-      { name: "status", type: "u8" },
-      { name: "registeredAt", type: "i64" },
-      { name: "mizaanAuthority", type: "Pubkey" },
+    description: "Mizaan LAZ partner identity attestation",
+    fields: [
+      { name: "lazWallet", type: SAS_TYPE.STRING },
+      { name: "lazNameHash", type: SAS_TYPE.STRING },
+      { name: "lazSlug", type: SAS_TYPE.STRING },
+      { name: "lazRegistrationNumber", type: SAS_TYPE.STRING },
+      { name: "websiteURL", type: SAS_TYPE.STRING },
+      { name: "contactEmail", type: SAS_TYPE.STRING },
+      { name: "region", type: SAS_TYPE.STRING },
+      { name: "jurisdictionLevel", type: SAS_TYPE.U8 },
+      { name: "status", type: SAS_TYPE.U8 },
+      { name: "registeredAt", type: SAS_TYPE.I64 },
+      { name: "mizaanAuthority", type: SAS_TYPE.STRING },
     ],
   },
   {
     envKey: "NEXT_PUBLIC_SAS_MUSTAHIK_SCHEMA",
     name: "MIZAAN_MUSTAHIK_V1",
-    layout: [
-      { name: "mustahikWallet", type: "Pubkey" },
-      { name: "lazWallet", type: "Pubkey" },
-      { name: "mustahikIdHash", type: "String" },
-      { name: "asnafCategory", type: "u8" },
-      { name: "region", type: "String" },
-      { name: "initials", type: "String" },
-      { name: "ageRange", type: "u8" },
-      { name: "status", type: "u8" },
-      { name: "registeredAt", type: "i64" },
+    description: "Mizaan mustahik (recipient) identity attestation",
+    fields: [
+      { name: "mustahikWallet", type: SAS_TYPE.STRING },
+      { name: "lazWallet", type: SAS_TYPE.STRING },
+      { name: "mustahikIdHash", type: SAS_TYPE.STRING },
+      { name: "asnafCategory", type: SAS_TYPE.U8 },
+      { name: "region", type: SAS_TYPE.STRING },
+      { name: "initials", type: SAS_TYPE.STRING },
+      { name: "ageRange", type: SAS_TYPE.U8 },
+      { name: "status", type: SAS_TYPE.U8 },
+      { name: "registeredAt", type: SAS_TYPE.I64 },
     ],
   },
 ];
+
+const SAS_CREDENTIAL_NAME = "Mizaan Platform";
 
 async function step<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
   console.log(`\n${LOG} >>> ${label}`);
@@ -286,34 +318,81 @@ async function setupIdrzMint(
   out.IDRZ_MINT_AUTHORITY_KEYPAIR = keypairToSecretJson(mintAuthority);
 }
 
-async function setupSasCredential(): Promise<void> {
-  if (isEnvSet("NEXT_PUBLIC_SAS_CREDENTIAL_PDA")) {
-    const existing = optionalEnv("NEXT_PUBLIC_SAS_CREDENTIAL_PDA");
-    console.warn(
-      `${LOG} NEXT_PUBLIC_SAS_CREDENTIAL_PDA already set (${existing}). Skipping credential creation.`,
-    );
-    out.NEXT_PUBLIC_SAS_CREDENTIAL_PDA = existing;
-    return;
-  }
-
-  const { keypair: platformAuthority } = loadOrCreateKeypair(
-    SAS_PLATFORM_AUTHORITY_PATH,
-  );
-  console.log(
-    `${LOG} platform authority ${platformAuthority.publicKey.toBase58()}`,
-  );
-
-  // TODO: install sas-lib — referenced by SRS §3.3.
-  // Replace with:
-  //   const credential = await createCredential({
-  //     authority: <gill KeyPairSigner from platformAuthority>,
-  //     name: "Mizaan Platform",
-  //   });
-  //   out.NEXT_PUBLIC_SAS_CREDENTIAL_PDA = credential.pda.toString();
-  console.log(`${LOG} [skipped: sas-lib not installed] credential creation`);
+interface SasContext {
+  credentialPda: Address;
 }
 
-async function setupSasSchemas(): Promise<void> {
+async function setupSasCredential(): Promise<SasContext | null> {
+  // Ensure both keypair files exist on disk — they're consumed by sas-lib
+  // via the kit signer loader, but loadOrCreateKeypair also stamps the
+  // companion `.json` and updates the env output block.
+  loadOrCreateKeypair(SAS_PLATFORM_AUTHORITY_PATH);
+  loadOrCreateKeypair(LAZ_AUTHORITY_PATH);
+
+  const payer = await loadKeypairAsSigner(PAYER_PATH);
+  const platformAuthority = await loadKeypairAsSigner(
+    SAS_PLATFORM_AUTHORITY_PATH,
+  );
+  const lazAuthority = await loadKeypairAsSigner(LAZ_AUTHORITY_PATH);
+
+  console.log(`${LOG} platform authority ${platformAuthority.address}`);
+  console.log(`${LOG} LAZ authority signer ${lazAuthority.address}`);
+
+  const [credentialPda] = await deriveCredentialPda({
+    authority: platformAuthority.address,
+    name: SAS_CREDENTIAL_NAME,
+  });
+  console.log(`${LOG} credential PDA ${credentialPda}`);
+
+  if (isEnvSet("NEXT_PUBLIC_SAS_CREDENTIAL_PDA")) {
+    const existing = optionalEnv("NEXT_PUBLIC_SAS_CREDENTIAL_PDA")!;
+    console.warn(
+      `${LOG} NEXT_PUBLIC_SAS_CREDENTIAL_PDA already set (${existing}); reusing.`,
+    );
+    out.NEXT_PUBLIC_SAS_CREDENTIAL_PDA = existing;
+    return { credentialPda: existing as Address };
+  }
+
+  // Build + send the createCredential transaction.
+  // The credential is owned by `platformAuthority`; LAZ authority is listed as
+  // an allowed signer (it'll sign individual attestations later).
+  const { rpc, sendAndConfirm } = createKitClient();
+  const ix = getCreateCredentialInstruction({
+    payer,
+    credential: credentialPda,
+    authority: platformAuthority,
+    name: SAS_CREDENTIAL_NAME,
+    signers: [lazAuthority.address],
+  });
+  const { value: blockhash } = await rpc.getLatestBlockhash().send();
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(payer.address, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
+    (m) => appendTransactionMessageInstruction(ix, m),
+  );
+  const signed = await signTransactionMessageWithSigners(message);
+  assertIsTransactionWithinSizeLimit(signed);
+  await sendAndConfirm(signed, { commitment: "confirmed" });
+
+  console.log(`${LOG} credential created at ${credentialPda}`);
+  out.NEXT_PUBLIC_SAS_CREDENTIAL_PDA = credentialPda;
+  return { credentialPda };
+}
+
+async function setupSasSchemas(ctx: SasContext | null): Promise<void> {
+  if (!ctx) {
+    console.warn(`${LOG} no credential context — cannot create schemas`);
+    return;
+  }
+  const { credentialPda } = ctx;
+
+  const payer = await loadKeypairAsSigner(PAYER_PATH);
+  const platformAuthority = await loadKeypairAsSigner(
+    SAS_PLATFORM_AUTHORITY_PATH,
+  );
+  const { rpc, sendAndConfirm } = createKitClient();
+
   for (const schema of SAS_SCHEMAS) {
     if (isEnvSet(schema.envKey)) {
       const existing = optionalEnv(schema.envKey);
@@ -324,17 +403,38 @@ async function setupSasSchemas(): Promise<void> {
       continue;
     }
 
-    // TODO: install sas-lib — referenced by SRS §3.3.
-    // Replace with:
-    //   const result = await createSchema({
-    //     credential: <credential.pda from setupSasCredential>,
-    //     name: schema.name,
-    //     layout: schema.layout,
-    //   });
-    //   out[schema.envKey] = result.pda.toString();
-    console.log(
-      `${LOG} [skipped: sas-lib not installed] ${schema.name} (${schema.layout.length} fields)`,
+    const [schemaPda] = await deriveSchemaPda({
+      credential: credentialPda,
+      name: schema.name,
+      version: 1,
+    });
+
+    const layout = new Uint8Array(schema.fields.map((f) => f.type));
+    const fieldNames = schema.fields.map((f) => f.name);
+
+    const ix = getCreateSchemaInstruction({
+      payer,
+      authority: platformAuthority,
+      credential: credentialPda,
+      schema: schemaPda,
+      name: schema.name,
+      description: schema.description,
+      layout,
+      fieldNames,
+    });
+    const { value: blockhash } = await rpc.getLatestBlockhash().send();
+    const message = pipe(
+      createTransactionMessage({ version: 0 }),
+      (m) => setTransactionMessageFeePayer(payer.address, m),
+      (m) => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
+      (m) => appendTransactionMessageInstruction(ix, m),
     );
+    const signed = await signTransactionMessageWithSigners(message);
+    assertIsTransactionWithinSizeLimit(signed);
+    await sendAndConfirm(signed, { commitment: "confirmed" });
+
+    console.log(`${LOG} ${schema.name} → ${schemaPda}`);
+    out[schema.envKey] = schemaPda;
   }
 }
 
@@ -395,9 +495,11 @@ async function main(): Promise<void> {
     setupIdrzMint(connection, payer),
   );
 
-  await step("create SAS Mizaan credential", () => setupSasCredential());
+  const sasCtx = await step("create SAS Mizaan credential", () =>
+    setupSasCredential(),
+  );
 
-  await step("create SAS schemas", () => setupSasSchemas());
+  await step("create SAS schemas", () => setupSasSchemas(sasCtx));
 
   await step("generate LAZ authority keypair", () => setupLazAuthority());
 

@@ -4,6 +4,7 @@ import type {
   Category,
   DonationMeta,
   DonationStatus,
+  DonationType,
 } from "@/lib/types";
 import type { DonationsMetaRow } from "@/lib/supabase/types";
 
@@ -16,12 +17,12 @@ function rowToDonation(row: DonationsMetaRow): DonationMeta {
     donorEmail: row.donor_email,
     donorDisplayName: row.donor_display_name,
     encryptedMessage: row.encrypted_message,
-    donationType: row.donation_type,
+    donationType: row.donation_type as DonationType,
     amountIdrz: BigInt(row.amount_idrz),
     categoryPreference: (row.category_preference ?? []) as Category[],
     tokenTransferSignature: row.token_transfer_signature,
     blockHeight: row.block_height,
-    status: row.status,
+    status: row.status as DonationStatus,
     totalDistributedIdrz: BigInt(row.total_distributed_idrz),
     distributionCount: row.distribution_count,
     confirmationCount: row.confirmation_count,

@@ -1,7 +1,14 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { fail, isSupabaseConfigured, ok } from "@/lib/api/responses";
+import {
+  fail,
+  isSasConfigured,
+  isSupabaseConfigured,
+  ok,
+} from "@/lib/api/responses";
 import { MOCK_LAZ } from "@/lib/api/mock-laz";
+import { getLazById } from "@/lib/db/laz";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { DonationMeta } from "@/lib/types";
 
 /**
@@ -39,6 +46,9 @@ const createDonationSchema = z.object({
     .max(6),
   donorEmail: z.string().email().nullable().optional(),
   donorDisplayName: z.string().max(80).nullable().optional(),
+  // Browser-signed SPL token transfer (donor → LAZ wallet) that this
+  // donation commits to. Required in real mode; optional in mock mode.
+  tokenTransferSignature: z.string().min(32).max(128).optional(),
 });
 
 export type CreateDonationInput = z.infer<typeof createDonationSchema>;
@@ -91,20 +101,120 @@ export async function POST(req: NextRequest) {
   }
 
   // ─── Real mode (Supabase configured) ───────────────────────────────
-  // TODO: full real-mode flow:
-  //   1. Look up LAZ row to get the wallet, status check
-  //   2. Build MIZAAN_DONATION_V1 payload (lib/sas/donation.ts)
-  //   3. Caller (browser) must have already signed the IDRZ transfer +
-  //      attestation. Server only persists the off-chain record.
-  //   4. Insert into donations_meta via lib/db/donations.ts or admin client
-  //   5. Audit log row
-  // For now, return a real-mode-not-implemented error so the UI can
-  // distinguish the path during early integration.
-  return fail(
-    "NOT_IMPLEMENTED",
-    "real-mode /api/donations not wired yet — leave Supabase env unset to demo via mock mode",
-    501,
-  );
+  // Look up LAZ; reject if missing or paused.
+  const lazResult = await getLazById(input.lazId);
+  if (lazResult.error) {
+    if (lazResult.error.code === "NOT_FOUND") {
+      return fail("NOT_FOUND", `laz ${input.lazId} not found`, 404);
+    }
+    return fail(lazResult.error.code, lazResult.error.message, 500);
+  }
+  const laz = lazResult.data;
+  if (laz.status !== "ACTIVE") {
+    return fail("LAZ_INACTIVE", `laz ${laz.slug} is not active`, 422);
+  }
+
+  // SAS attestation creation is best-effort: when SAS isn't provisioned yet
+  // (running `setup:devnet` is the gating step), we still let the donation
+  // be recorded with a synthetic PDA so the demo flow stays usable.
+  let donationPda: string;
+  let signature: string;
+  if (isSasConfigured() && input.tokenTransferSignature) {
+    try {
+      const { createDonationAttestation } = await import("@/lib/sas/server");
+      const result = await createDonationAttestation({
+        donorWallet: input.donorWallet,
+        lazWallet: laz.walletAddress,
+        amountIDRZ: input.amountIdrz,
+        donationType: input.donationType,
+        // The donor form takes a multi-select; the attestation schema only
+        // carries a single preferred category. We send "ANY" when the donor
+        // didn't constrain or picked multiple — the LAZ decides the actual
+        // category at distribution time.
+        categoryPreference:
+          input.categoryPreference.length === 1
+            ? input.categoryPreference[0]
+            : "ANY",
+        createdAt: BigInt(Math.floor(Date.now() / 1000)),
+        tokenTransferSignature: input.tokenTransferSignature,
+      });
+      donationPda = result.pda;
+      signature = result.signature;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return fail("SAS_ERROR", `attestation failed: ${msg}`, 502);
+    }
+  } else {
+    // Mock attestation values when SAS isn't ready yet. The donation row
+    // still gets persisted so the rest of the UI flow exercises real DB.
+    donationPda = mockBase58(44);
+    signature = input.tokenTransferSignature ?? mockBase58(88);
+  }
+
+  // Persist the off-chain donation meta row via the service-role client.
+  const supabase = createAdminClient();
+  const insert = await supabase
+    .from("donations_meta")
+    .insert({
+      donation_commitment_pda: donationPda,
+      donor_wallet: input.donorWallet,
+      laz_id: input.lazId,
+      donor_email: input.donorEmail ?? null,
+      donor_display_name: input.donorDisplayName ?? null,
+      donation_type: input.donationType,
+      // Postgres BIGINT — supabase-js types say number, but it serializes
+      // strings safely and avoids Number.MAX_SAFE_INTEGER loss.
+      amount_idrz: input.amountIdrz.toString() as unknown as number,
+      category_preference: input.categoryPreference,
+      token_transfer_signature: signature,
+      status: "PENDING_DISTRIBUTION",
+    })
+    .select("*")
+    .single();
+
+  if (insert.error || !insert.data) {
+    return fail(
+      "DB_ERROR",
+      insert.error?.message ?? "insert failed",
+      500,
+    );
+  }
+
+  // Audit log row drives the live feed.
+  await supabase.from("audit_log").insert({
+    event_type: "DONATION_CREATED",
+    donation_pda: donationPda,
+    actor_wallet: input.donorWallet,
+    actor_role: "donor",
+    laz_id: input.lazId,
+    laz_slug: laz.slug,
+    amount_idrz: input.amountIdrz.toString() as unknown as number,
+    region: laz.region,
+  });
+
+  const row = insert.data;
+  const donation: DonationMeta = {
+    id: row.id,
+    donationCommitmentPda: row.donation_commitment_pda,
+    donorWallet: row.donor_wallet,
+    lazId: row.laz_id,
+    donorEmail: row.donor_email,
+    donorDisplayName: row.donor_display_name,
+    encryptedMessage: row.encrypted_message,
+    donationType: input.donationType,
+    amountIdrz: BigInt(row.amount_idrz),
+    categoryPreference: input.categoryPreference,
+    tokenTransferSignature: row.token_transfer_signature,
+    blockHeight: row.block_height,
+    status: "PENDING_DISTRIBUTION",
+    totalDistributedIdrz: BigInt(row.total_distributed_idrz),
+    distributionCount: row.distribution_count,
+    confirmationCount: row.confirmation_count,
+    createdAt: row.created_at,
+    fullyDistributedAt: row.fully_distributed_at,
+    fullyConfirmedAt: row.fully_confirmed_at,
+  };
+  return ok(donation, 201);
 }
 
 /**
@@ -135,11 +245,63 @@ export async function GET(req: NextRequest) {
     return ok(list);
   }
 
-  return fail(
-    "NOT_IMPLEMENTED",
-    "real-mode GET /api/donations not wired yet",
-    501,
+  const { getDonationByPda, listDonationsByDonorWallet } = await import(
+    "@/lib/db/donations"
   );
+  if (pda) {
+    // `?pda=` accepts either the on-chain commitment PDA or the Supabase
+    // UUID — donor-flow redirects use the UUID since that's what `id`
+    // returns from POST. Try PDA first, then fall back to UUID.
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        pda,
+      );
+    if (isUuid) {
+      const supabase = createAdminClient();
+      const r = await supabase
+        .from("donations_meta")
+        .select("*")
+        .eq("id", pda)
+        .maybeSingle();
+      if (r.error || !r.data) {
+        return fail("NOT_FOUND", "donation not found", 404);
+      }
+      const row = r.data;
+      const donation: DonationMeta = {
+        id: row.id,
+        donationCommitmentPda: row.donation_commitment_pda,
+        donorWallet: row.donor_wallet,
+        lazId: row.laz_id,
+        donorEmail: row.donor_email,
+        donorDisplayName: row.donor_display_name,
+        encryptedMessage: row.encrypted_message,
+        donationType: row.donation_type as DonationMeta["donationType"],
+        amountIdrz: BigInt(row.amount_idrz),
+        categoryPreference: (row.category_preference ?? []) as DonationMeta["categoryPreference"],
+        tokenTransferSignature: row.token_transfer_signature,
+        blockHeight: row.block_height,
+        status: row.status as DonationMeta["status"],
+        totalDistributedIdrz: BigInt(row.total_distributed_idrz),
+        distributionCount: row.distribution_count,
+        confirmationCount: row.confirmation_count,
+        createdAt: row.created_at,
+        fullyDistributedAt: row.fully_distributed_at,
+        fullyConfirmedAt: row.fully_confirmed_at,
+      };
+      return ok(donation);
+    }
+    const result = await getDonationByPda(pda);
+    if (result.error) {
+      const status = result.error.code === "NOT_FOUND" ? 404 : 500;
+      return fail(result.error.code, result.error.message, status);
+    }
+    return ok(result.data);
+  }
+  const result = await listDonationsByDonorWallet(donor!);
+  if (result.error) {
+    return fail(result.error.code, result.error.message, 500);
+  }
+  return ok(result.data);
 }
 
 /**

@@ -10,10 +10,16 @@
     "typecheck": "tsc --noEmit",
     "setup:devnet": "tsx scripts/setup-devnet.ts",
     "seed:laz": "tsx scripts/seed-laz.ts",
-    "seed:mustahik": "tsx scripts/seed-mustahik.ts"
+    "seed:mustahik": "tsx scripts/seed-mustahik.ts",
+    "seed:demo": "tsx scripts/seed-demo-chains.ts",
+    "fund:sol": "tsx scripts/fund-sol.ts"
   },
   "dependencies": {
     "@privy-io/react-auth": "^3.23.1",
+    "@solana-program/system": "^0.10.0",
+    "@solana-program/token": "^0.9.0",
+    "@solana/kit": "^5.5.1",
+    "@solana/signers": "^2.3.0",
     "@solana/spl-token": "^0.4.13",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",
@@ -31,6 +37,8 @@
     "next-intl": "^4.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sas-lib": "^1.0.10",
+    "server-only": "^0.0.1",
     "shadcn": "^4.6.0",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.0.0",

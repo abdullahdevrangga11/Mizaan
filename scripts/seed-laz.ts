@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./_lib/load-env";
 
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
