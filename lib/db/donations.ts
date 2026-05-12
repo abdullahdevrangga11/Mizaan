@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   ApiResult,
   Category,
@@ -117,11 +118,16 @@ export interface FeaturedTrailView {
  * Fetch the most recent fully-confirmed donation chain for a donor wallet,
  * joined with the mustahik on the chosen distribution. Returns `null` when
  * the wallet has no seeded data yet — caller falls back to mock.
+ *
+ * Uses the admin client because the public trail page is intentionally
+ * readable by anyone with the wallet address — RLS on donations_meta blocks
+ * anon reads, but the data exposed here (PDAs, amount, mustahik display name,
+ * region, timestamps) is the same information published on /verify and /feed.
  */
 export async function getFeaturedTrailForWallet(
   walletAddress: string
 ): Promise<ApiResult<FeaturedTrailView | null>> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: donation, error: donationErr } = await supabase
     .from("donations_meta")
