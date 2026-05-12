@@ -171,6 +171,13 @@ export interface FeedItem {
   occurredAt: string;
 }
 
+/** FeedItem + per-event attestation PDA + resolved LAZ name. Used by
+ *  /feed page (SSR) and the Realtime subscription (browser). */
+export interface FeedItemEnriched extends FeedItem {
+  attestationPda: string | null;
+  lazName: string | null;
+}
+
 // ---------- API envelope ----------
 
 export type ApiResult<T> =

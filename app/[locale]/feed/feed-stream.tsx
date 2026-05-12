@@ -13,7 +13,7 @@ import {
 import {
   subscribeToFeedEnriched,
   type FeedItemEnriched,
-} from "@/lib/db/feed";
+} from "@/lib/db/feed-client";
 
 const MAX_ITEMS = 30;
 const TICK_MS = 30_000;

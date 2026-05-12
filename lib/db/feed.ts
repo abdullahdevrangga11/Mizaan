@@ -1,4 +1,3 @@
-import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
@@ -6,13 +5,12 @@ import type {
   Category,
   FeedEventType,
   FeedItem,
+  FeedItemEnriched,
 } from "@/lib/types";
 import type { AuditLogRow, FeedCacheRow } from "@/lib/supabase/types";
 
-export interface FeedItemEnriched extends FeedItem {
-  attestationPda: string | null;
-  lazName: string | null;
-}
+// Re-export the type for back-compat with existing importers.
+export type { FeedItemEnriched } from "@/lib/types";
 
 function cacheRowToFeedItem(row: FeedCacheRow): FeedItem {
   // feed_cache columns are nullable in the generated types (because Postgres
@@ -146,115 +144,8 @@ const FEED_EVENTS: ReadonlyArray<FeedEventType> = [
   "RECEIPT_CONFIRMED",
 ];
 
-export interface FeedSubscription {
-  unsubscribe: () => void;
-}
-
-/**
- * Subscribe to live feed events. Browser-only — uses the realtime channel.
- * The callback fires once per matching INSERT into `audit_log`.
- */
-export function subscribeToFeed(
-  callback: (item: FeedItem) => void
-): FeedSubscription {
-  const supabase = createBrowserSupabase();
-  const channel = supabase
-    .channel("public:audit_log:feed")
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "audit_log",
-      },
-      (payload) => {
-        const row = payload.new as AuditLogRow;
-        if (!FEED_EVENTS.includes(row.event_type as FeedEventType)) return;
-        callback(auditRowToFeedItem(row));
-      }
-    )
-    .subscribe();
-
-  return {
-    unsubscribe: () => {
-      void supabase.removeChannel(channel);
-    },
-  };
-}
-
-/**
- * Enriched variant of subscribeToFeed for the /feed page. Surfaces the
- * per-event PDA (donation/distribution/receipt) and the LAZ name. Browser
- * does a lightweight LAZ-name lookup on first event via /api/laz cache.
- *
- * onError fires if the channel transitions to "CHANNEL_ERROR" / "TIMED_OUT"
- * — callers should treat that as a signal to keep the mock fallback.
- */
-export function subscribeToFeedEnriched(opts: {
-  onItem: (item: FeedItemEnriched) => void;
-  onStatus?: (status: string) => void;
-}): FeedSubscription {
-  const supabase = createBrowserSupabase();
-  const lazNameCache = new Map<string, string>();
-
-  async function lookupLazName(lazId: string | null): Promise<string | null> {
-    if (!lazId) return null;
-    if (lazNameCache.has(lazId)) return lazNameCache.get(lazId) ?? null;
-    try {
-      const res = await fetch("/api/laz", { cache: "force-cache" });
-      const json = (await res.json()) as
-        | { data: Array<{ id: string; name: string }>; error: null }
-        | { data: null; error: { code: string; message: string } };
-      if (json && "data" in json && Array.isArray(json.data)) {
-        for (const row of json.data) lazNameCache.set(row.id, row.name);
-      }
-    } catch {
-      // ignore — feed survives without LAZ names
-    }
-    return lazNameCache.get(lazId) ?? null;
-  }
-
-  const channel = supabase
-    .channel("public:audit_log:feed-enriched")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "audit_log" },
-      async (payload) => {
-        const row = payload.new as AuditLogRow;
-        const eventType = row.event_type as FeedEventType;
-        if (!FEED_EVENTS.includes(eventType)) return;
-
-        let attestationPda: string | null = null;
-        if (eventType === "DONATION_CREATED") attestationPda = row.donation_pda;
-        else if (eventType === "DISTRIBUTION_CREATED")
-          attestationPda = row.distribution_pda;
-        else if (eventType === "RECEIPT_CONFIRMED")
-          attestationPda = row.receipt_pda;
-
-        const lazName = await lookupLazName(row.laz_id);
-
-        opts.onItem({
-          id: row.id,
-          eventType,
-          amountIdrz: row.amount_idrz === null ? null : BigInt(row.amount_idrz),
-          category: (row.category ?? null) as Category | null,
-          region: row.region,
-          mustahikInitials: row.mustahik_initials,
-          lazSlug: row.laz_slug,
-          purposeShort: row.purpose_short,
-          occurredAt: row.occurred_at,
-          attestationPda,
-          lazName,
-        });
-      },
-    )
-    .subscribe((status) => {
-      if (opts.onStatus) opts.onStatus(status);
-    });
-
-  return {
-    unsubscribe: () => {
-      void supabase.removeChannel(channel);
-    },
-  };
-}
+// Browser-only feed helpers (subscribeToFeed, subscribeToFeedEnriched,
+// FeedSubscription) now live in ./feed-client.ts so server-side import
+// graphs never pull `@supabase/ssr` cookie-reading code into the client
+// bundle. Re-export the FeedSubscription type for back-compat.
+export type { FeedSubscription } from "./feed-client";
