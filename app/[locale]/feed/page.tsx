@@ -10,20 +10,20 @@ import { FeedStream } from "./feed-stream";
 
 const COPY = {
   eyebrow: {
-    id: "// aktivitas live · solana devnet",
-    en: "// live activity · solana devnet",
+    id: "// activity preview · solana devnet",
+    en: "// activity preview · solana devnet",
   },
   headline: {
     id: "saksikan zakat mengalir.",
     en: "watch zakat flow.",
   },
   subtitle: {
-    id: "data live streaming dari semua 79 LAZ. semua mustahik anonim (initials + region). cryptographic proof, zero PII.",
-    en: "live stream across all 79 LAZ. every mustahik is anonymized (initials + region). cryptographic proof, zero PII.",
+    id: "preview stream dari mitra laz aktif. mustahik dianonimkan (initials + region). proof kriptografis, zero PII. realtime via supabase channel saat mainnet launch.",
+    en: "preview stream across active laz partners. every mustahik is anonymized (initials + region). cryptographic proof, zero PII. realtime via supabase channel at mainnet launch.",
   },
   pulse: {
-    id: "streaming · supabase realtime",
-    en: "streaming · supabase realtime",
+    id: "preview · supabase channel siap",
+    en: "preview · supabase channel ready",
   },
 } as const;
 
