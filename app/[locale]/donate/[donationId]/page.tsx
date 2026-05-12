@@ -12,6 +12,7 @@ import {
 } from "@/lib/constants";
 import { formatRupiah, shortenAddress } from "@/lib/utils";
 import { MOCK_LAZ } from "@/lib/api/mock-laz";
+import { listActiveLazPublic } from "@/lib/db/laz";
 import type { ApiResult, DonationMeta } from "@/lib/types";
 
 interface SuccessPageProps {
@@ -49,7 +50,15 @@ type DonationMetaWire = Omit<
   totalDistributedIdrz: string;
 };
 
-function getMockLazName(lazId: string): string {
+/**
+ * Resolve a LAZ name by id. Reads the real Supabase directory first and
+ * falls back to the in-memory MOCK_LAZ when the table is empty or the id
+ * isn't found there yet (e.g. donations created in mock mode pre-seed).
+ */
+async function resolveLazName(lazId: string): Promise<string> {
+  const { data } = await listActiveLazPublic();
+  const fromDb = data?.find((l) => l.id === lazId);
+  if (fromDb) return fromDb.name;
   return (
     MOCK_LAZ.find((l) => l.id === lazId)?.name ?? lazId.toLowerCase()
   );
@@ -66,7 +75,7 @@ export default async function DonationSuccessPage({
   if (!donation) {
     notFound();
   }
-  const lazName = getMockLazName(donation.lazId);
+  const lazName = await resolveLazName(donation.lazId);
 
   const solscanAccount = (pda: string) =>
     `https://solscan.io/account/${pda}?cluster=devnet`;

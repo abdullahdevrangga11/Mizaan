@@ -4,6 +4,7 @@ import { FooterReveal } from "@/components/footer-reveal";
 import { LazStats } from "@/components/laz-directory/laz-stats";
 import { LazGrid } from "./laz-grid";
 import { MOCK_LAZ } from "@/lib/api/mock-laz";
+import { listActiveLazPublic } from "@/lib/db/laz";
 import type { SupportedLocale } from "@/lib/constants";
 
 const COPY: Record<
@@ -110,10 +111,16 @@ export default async function LazDirectoryPage() {
   const locale = (await getLocale()) as SupportedLocale;
   const copy = COPY[locale];
 
-  const totalLaz = MOCK_LAZ.length;
-  const totalMustahik = MOCK_LAZ.reduce((sum, l) => sum + l.mustahikCount, 0);
+  // Read the real LAZ directory from Supabase. Fall back to MOCK_LAZ if
+  // the table is empty or unreachable so an unseeded environment still
+  // shows the design.
+  const { data: realLaz } = await listActiveLazPublic();
+  const laz = realLaz && realLaz.length > 0 ? realLaz : MOCK_LAZ;
+
+  const totalLaz = laz.length;
+  const totalMustahik = laz.reduce((sum, l) => sum + l.mustahikCount, 0);
   const uniqueRegions = new Set(
-    MOCK_LAZ.map((l) => l.region.toLowerCase()),
+    laz.map((l) => l.region.toLowerCase()),
   ).size;
 
   return (
@@ -169,7 +176,7 @@ export default async function LazDirectoryPage() {
             </div>
 
             {/* Grid + filters */}
-            <LazGrid laz={MOCK_LAZ} locale={locale} copy={copy.grid} />
+            <LazGrid laz={laz} locale={locale} copy={copy.grid} />
           </div>
         </section>
       </main>

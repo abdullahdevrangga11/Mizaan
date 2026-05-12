@@ -3,7 +3,9 @@ import { FooterReveal } from "@/components/footer-reveal";
 import { DonorSummary } from "@/components/track/donor-summary";
 import type { DistributionView } from "@/components/track/distribution-card";
 import type { SupportedLocale } from "@/lib/constants";
-import { getFeaturedTrailForWallet } from "@/lib/db/donations";
+import { getDonorTrailFull } from "@/lib/db/donations";
+import { formatRupiah, timeAgo } from "@/lib/utils";
+import type { OtherDistributionItem } from "@/lib/db/donations";
 import { TrackBody } from "./track-body";
 import { trackCopy } from "./track-copy";
 
@@ -176,6 +178,34 @@ interface PageProps {
   params: Promise<{ locale: string; walletAddress: string }>;
 }
 
+function otherItemToView(item: OtherDistributionItem, locale: SupportedLocale): DistributionView {
+  return {
+    id: item.distributionDecisionPda,
+    mustahikDisplayName: item.mustahikName,
+    purpose: item.purpose,
+    region: item.mustahikRegion,
+    category: item.category,
+    amountIdrz: item.amountIdrz,
+    confirmedAgo: item.receiptConfirmedAt
+      ? timeAgo(item.receiptConfirmedAt, locale)
+      : timeAgo(item.distributionDecidedAt, locale),
+    donationCommitmentPda: item.donationCommitmentPda,
+    donationSignedAt: formatWib(item.donationCreatedAt),
+    distributionDecisionPda: item.distributionDecisionPda,
+    distributionByName: item.lazAmilName,
+    distributionDecidedAt: formatWib(item.distributionDecidedAt),
+    receiptPda: item.receiptPda ?? "—",
+    receiptConfirmedBy: item.receiptConfirmedAt
+      ? `${item.mustahikName} confirmed`
+      : "(unconfirmed)",
+    receiptConfirmedAt: item.receiptConfirmedAt
+      ? formatWib(item.receiptConfirmedAt)
+      : "pending",
+    thankYouMessage: null,
+    iconKind: iconKindForCategory(item.category),
+  };
+}
+
 export default async function DonorTrackPage({ params }: PageProps) {
   const { locale: rawLocale, walletAddress } = await params;
   const locale: SupportedLocale = rawLocale === "en" ? "en" : "id";
@@ -183,29 +213,46 @@ export default async function DonorTrackPage({ params }: PageProps) {
 
   const wallet = walletAddress || SARAH_WALLET;
 
-  // Try to pull a real seeded chain from Supabase. If found, overlay its real
-  // on-chain PDAs onto the featured card so the demo's PDA links resolve to
-  // actual Solscan pages. Otherwise fall back to the static mock.
-  const { data: realTrail } = await getFeaturedTrailForWallet(wallet);
+  // Pull the wallet's full on-chain trail: featured chain + every other
+  // distribution + pre-computed aggregates. When the wallet has no seeded
+  // data (e.g. an unknown URL on a fresh deploy), fall back to the static
+  // mock so the page still demonstrates the design.
+  const { data: trail } = await getDonorTrailFull(wallet);
+  const hasRealData = trail && trail.others.length + (trail.featured ? 1 : 0) > 0;
 
-  const featured: DistributionView = realTrail
+  const featured: DistributionView = trail?.featured
     ? {
         ...FEATURED,
-        mustahikDisplayName: realTrail.mustahikName,
-        purpose: realTrail.purpose,
-        region: realTrail.mustahikRegion,
-        category: realTrail.category,
-        amountIdrz: realTrail.amountIdrz,
-        donationCommitmentPda: realTrail.donationCommitmentPda,
-        donationSignedAt: formatWib(realTrail.donationCreatedAt),
-        distributionDecisionPda: realTrail.distributionDecisionPda,
-        distributionDecidedAt: formatWib(realTrail.distributionDecidedAt),
-        receiptPda: realTrail.receiptPda,
-        receiptConfirmedAt: formatWib(realTrail.receiptConfirmedAt),
-        iconKind: iconKindForCategory(realTrail.category),
-        thankYouMessage: realTrail.thankYouMessage ?? FEATURED.thankYouMessage,
+        mustahikDisplayName: trail.featured.mustahikName,
+        purpose: trail.featured.purpose,
+        region: trail.featured.mustahikRegion,
+        category: trail.featured.category,
+        amountIdrz: trail.featured.amountIdrz,
+        donationCommitmentPda: trail.featured.donationCommitmentPda,
+        donationSignedAt: formatWib(trail.featured.donationCreatedAt),
+        distributionDecisionPda: trail.featured.distributionDecisionPda,
+        distributionDecidedAt: formatWib(trail.featured.distributionDecidedAt),
+        receiptPda: trail.featured.receiptPda,
+        receiptConfirmedAt: formatWib(trail.featured.receiptConfirmedAt),
+        iconKind: iconKindForCategory(trail.featured.category),
+        thankYouMessage:
+          trail.featured.thankYouMessage ?? FEATURED.thankYouMessage,
       }
     : FEATURED;
+
+  const others: DistributionView[] = hasRealData
+    ? (trail!.others.map((item) => otherItemToView(item, locale)))
+    : OTHERS;
+
+  const aggregates = hasRealData
+    ? trail!.aggregates
+    : {
+        totalIdrz: 22_000_000n,
+        mustahikCount: 27,
+        distributionCount: 27,
+        confirmedCount: 27,
+        avgConfirmHours: 4.2,
+      };
 
   return (
     <>
@@ -214,20 +261,20 @@ export default async function DonorTrackPage({ params }: PageProps) {
         <div className="mx-auto w-full max-w-[1440px]">
           <DonorSummary
             walletAddress={wallet}
-            totalIdrz={22_000_000n}
-            mustahikCount={27}
-            confirmedCount={27}
-            avgConfirmHours={4.2}
+            totalIdrz={aggregates.totalIdrz}
+            mustahikCount={aggregates.mustahikCount}
+            confirmedCount={aggregates.confirmedCount}
+            avgConfirmHours={aggregates.avgConfirmHours}
             copy={t.summary}
           />
 
           <TrackBody
             locale={locale}
             featured={featured}
-            others={OTHERS}
+            others={others}
             wallet={wallet}
-            totalRupiahDisplay="Rp 22,000,000"
-            mustahikCount={27}
+            totalRupiahDisplay={formatRupiah(aggregates.totalIdrz)}
+            mustahikCount={aggregates.mustahikCount}
           />
         </div>
       </main>

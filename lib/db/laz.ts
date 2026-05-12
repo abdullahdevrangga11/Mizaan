@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   ApiResult,
   Laz,
@@ -32,6 +33,26 @@ function rowToLaz(row: LazRow): Laz {
 
 export async function listActiveLaz(): Promise<ApiResult<Laz[]>> {
   const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("laz")
+    .select("*")
+    .eq("status", "ACTIVE")
+    .order("name", { ascending: true });
+
+  if (error) {
+    return { data: null, error: { code: "DB_ERROR", message: error.message } };
+  }
+  return { data: (data as LazRow[]).map(rowToLaz), error: null };
+}
+
+/**
+ * Admin-client variant of listActiveLaz for surfaces that are
+ * intentionally public (/laz directory, /donate step 3 LAZ picker,
+ * /verify LAZ resolution). Bypasses RLS — the data exposed here is
+ * a published directory, not PII.
+ */
+export async function listActiveLazPublic(): Promise<ApiResult<Laz[]>> {
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("laz")
     .select("*")

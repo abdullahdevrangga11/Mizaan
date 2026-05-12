@@ -114,6 +114,35 @@ export interface FeaturedTrailView {
   thankYouMessage: string | null;
 }
 
+export interface OtherDistributionItem {
+  donationCommitmentPda: string;
+  donationCreatedAt: string;
+  distributionDecisionPda: string;
+  distributionDecidedAt: string;
+  receiptPda: string | null;
+  receiptConfirmedAt: string | null;
+  mustahikName: string;
+  mustahikRegion: string;
+  amountIdrz: bigint;
+  purpose: string;
+  category: Category;
+  lazAmilName: string;
+}
+
+export interface DonorTrailAggregates {
+  totalIdrz: bigint;
+  mustahikCount: number;
+  distributionCount: number;
+  confirmedCount: number;
+  avgConfirmHours: number;
+}
+
+export interface DonorTrailFull {
+  featured: FeaturedTrailView | null;
+  others: OtherDistributionItem[];
+  aggregates: DonorTrailAggregates;
+}
+
 /**
  * Fetch the most recent fully-confirmed donation chain for a donor wallet,
  * joined with the mustahik on the chosen distribution. Returns `null` when
@@ -182,6 +211,176 @@ export async function getFeaturedTrailForWallet(
       purpose: dist.purpose_description,
       category: dist.category as Category,
       thankYouMessage: dist.thank_you_message_encrypted,
+    },
+    error: null,
+  };
+}
+
+/**
+ * Full donor trail: all donations + their distributions for a wallet,
+ * joined with mustahik display info and LAZ name, plus a "featured"
+ * pick (most-recent confirmed) and pre-computed aggregates for the
+ * /track header strip.
+ *
+ * Falls back to `{ featured: null, others: [], aggregates: zero }`
+ * when the wallet has no seeded data — caller decides whether to
+ * surface mock filler or render an honest empty state.
+ *
+ * Uses the admin client because /track is intentionally public for
+ * any wallet, and the data we surface (PDAs, amounts, anonymised
+ * mustahik names + region) is the same information /verify and
+ * /feed already publish.
+ */
+export async function getDonorTrailFull(
+  walletAddress: string,
+): Promise<ApiResult<DonorTrailFull>> {
+  const supabase = createAdminClient();
+
+  const { data: donations, error: donationsErr } = await supabase
+    .from("donations_meta")
+    .select("donation_commitment_pda, created_at")
+    .eq("donor_wallet", walletAddress)
+    .order("created_at", { ascending: false });
+
+  if (donationsErr) {
+    return {
+      data: null,
+      error: { code: "DB_ERROR", message: donationsErr.message },
+    };
+  }
+
+  const empty: DonorTrailFull = {
+    featured: null,
+    others: [],
+    aggregates: {
+      totalIdrz: 0n,
+      mustahikCount: 0,
+      distributionCount: 0,
+      confirmedCount: 0,
+      avgConfirmHours: 0,
+    },
+  };
+  if (!donations || donations.length === 0) {
+    return { data: empty, error: null };
+  }
+
+  const commitmentPdas = donations.map((d) => d.donation_commitment_pda);
+  const donationCreatedAtByPda = new Map(
+    donations.map((d) => [d.donation_commitment_pda, d.created_at]),
+  );
+
+  const { data: dists, error: distsErr } = await supabase
+    .from("distributions_meta")
+    .select(
+      "donation_commitment_pda, distribution_decision_pda, created_at, receipt_pda, receipt_confirmed_at, amount_idrz, purpose_description, category, thank_you_message_encrypted, mustahik:mustahik_id(full_name, region), laz:laz_id(name)",
+    )
+    .in("donation_commitment_pda", commitmentPdas)
+    .order("created_at", { ascending: false });
+
+  if (distsErr) {
+    return {
+      data: null,
+      error: { code: "DB_ERROR", message: distsErr.message },
+    };
+  }
+
+  if (!dists || dists.length === 0) {
+    return { data: empty, error: null };
+  }
+
+  const mustahikIds = new Set<string>();
+  let totalIdrz = 0n;
+  let confirmedCount = 0;
+  const confirmDurationsHours: number[] = [];
+
+  type DistRow = (typeof dists)[number];
+  const mapToItem = (d: DistRow): OtherDistributionItem => {
+    const mustahik = Array.isArray(d.mustahik) ? d.mustahik[0] : d.mustahik;
+    const laz = Array.isArray(d.laz) ? d.laz[0] : d.laz;
+    return {
+      donationCommitmentPda: d.donation_commitment_pda,
+      donationCreatedAt:
+        donationCreatedAtByPda.get(d.donation_commitment_pda) ?? d.created_at,
+      distributionDecisionPda: d.distribution_decision_pda,
+      distributionDecidedAt: d.created_at,
+      receiptPda: d.receipt_pda,
+      receiptConfirmedAt: d.receipt_confirmed_at,
+      mustahikName: mustahik?.full_name ?? "Anonymous mustahik",
+      mustahikRegion: mustahik?.region ?? "Indonesia",
+      amountIdrz: BigInt(d.amount_idrz),
+      purpose: d.purpose_description,
+      category: d.category as Category,
+      lazAmilName: laz?.name ? `${laz.name} (LAZ amil)` : "LAZ amil",
+    };
+  };
+
+  const items = dists.map(mapToItem);
+
+  for (const d of dists) {
+    const mustahikId = Array.isArray(d.mustahik) ? d.mustahik[0] : d.mustahik;
+    if (mustahikId) mustahikIds.add(JSON.stringify(mustahikId));
+    totalIdrz += BigInt(d.amount_idrz);
+    if (d.receipt_pda && d.receipt_confirmed_at) {
+      confirmedCount += 1;
+      const hours =
+        (new Date(d.receipt_confirmed_at).getTime() -
+          new Date(d.created_at).getTime()) /
+        1000 /
+        3600;
+      if (hours > 0) confirmDurationsHours.push(hours);
+    }
+  }
+
+  const avgConfirmHours = confirmDurationsHours.length
+    ? confirmDurationsHours.reduce((s, h) => s + h, 0) /
+      confirmDurationsHours.length
+    : 0;
+
+  // Pick the featured: most-recent confirmed distribution.
+  const featuredRow = dists.find(
+    (d) => d.receipt_pda && d.receipt_confirmed_at,
+  );
+  let featured: FeaturedTrailView | null = null;
+  if (featuredRow && featuredRow.receipt_pda && featuredRow.receipt_confirmed_at) {
+    const mustahik = Array.isArray(featuredRow.mustahik)
+      ? featuredRow.mustahik[0]
+      : featuredRow.mustahik;
+    featured = {
+      donationCommitmentPda: featuredRow.donation_commitment_pda,
+      donationCreatedAt:
+        donationCreatedAtByPda.get(featuredRow.donation_commitment_pda) ??
+        featuredRow.created_at,
+      distributionDecisionPda: featuredRow.distribution_decision_pda,
+      distributionDecidedAt: featuredRow.created_at,
+      receiptPda: featuredRow.receipt_pda,
+      receiptConfirmedAt: featuredRow.receipt_confirmed_at,
+      mustahikName: mustahik?.full_name ?? "Anonymous mustahik",
+      mustahikRegion: mustahik?.region ?? "Indonesia",
+      amountIdrz: BigInt(featuredRow.amount_idrz),
+      purpose: featuredRow.purpose_description,
+      category: featuredRow.category as Category,
+      thankYouMessage: featuredRow.thank_you_message_encrypted,
+    };
+  }
+
+  // "Others" = every distribution except the featured one.
+  const others = featuredRow
+    ? items.filter(
+        (i) => i.distributionDecisionPda !== featuredRow.distribution_decision_pda,
+      )
+    : items;
+
+  return {
+    data: {
+      featured,
+      others,
+      aggregates: {
+        totalIdrz,
+        mustahikCount: mustahikIds.size,
+        distributionCount: dists.length,
+        confirmedCount,
+        avgConfirmHours,
+      },
     },
     error: null,
   };
