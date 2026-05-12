@@ -417,6 +417,7 @@ export function VerifyForm({ locale }: VerifyFormProps) {
             confirmedCount={distributions.length}
             attestationCount={distributions.length * 3}
             copy={c.result}
+            explorerHref={`https://solscan.io/account/${trimmed}?cluster=devnet`}
           />
 
           {/* Section header for chain rows */}
@@ -468,8 +469,10 @@ export function VerifyForm({ locale }: VerifyFormProps) {
                 {c.trust.latency}
               </span>
               <a
-                href="#"
-                className="font-mono text-[11px] leading-[14px] text-[#14F195] underline decoration-1 underline-offset-2"
+                href={`https://solscan.io/account/${trimmed}?cluster=devnet#data`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[11px] leading-[14px] text-[#14F195] underline decoration-1 underline-offset-2 transition-opacity hover:opacity-80"
               >
                 {c.trust.raw}
               </a>

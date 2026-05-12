@@ -19,6 +19,7 @@ interface ResultCardProps {
   confirmedCount: number;
   attestationCount: number;
   copy: ResultCardCopy;
+  explorerHref?: string;
 }
 
 export function ResultCard({
@@ -28,6 +29,7 @@ export function ResultCard({
   confirmedCount,
   attestationCount,
   copy,
+  explorerHref,
 }: ResultCardProps) {
   return (
     <div className="flex flex-col">
@@ -55,8 +57,10 @@ export function ResultCard({
             {copy.fetched}
           </span>
           <a
-            href="#"
-            className="font-mono text-[11px] leading-[14px] text-[#14F195] underline decoration-1 underline-offset-2"
+            href={explorerHref ?? `https://solscan.io/account/${walletAddress}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[11px] leading-[14px] text-[#14F195] underline decoration-1 underline-offset-2 transition-opacity hover:opacity-80"
           >
             {copy.explorer}
           </a>
