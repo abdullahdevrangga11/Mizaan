@@ -68,8 +68,8 @@ const copy = {
         donation: "by donation id",
       },
       examplesLabel: "contoh:",
-      exampleWallet: "7xKX...bW2pNa",
-      examplePda: "3xK7Pm9...f9Bm",
+      exampleWallet: "7xKXmRr…kB8uH1F",
+      examplePda: "CLDKtP9…uRD4",
     },
     empty: {
       eyebrow: "menunggu input",
@@ -134,8 +134,8 @@ const copy = {
         donation: "by donation id",
       },
       examplesLabel: "try:",
-      exampleWallet: "7xKX...bW2pNa",
-      examplePda: "3xK7Pm9...f9Bm",
+      exampleWallet: "7xKXmRr…kB8uH1F",
+      examplePda: "CLDKtP9…uRD4",
     },
     empty: {
       eyebrow: "awaiting input",

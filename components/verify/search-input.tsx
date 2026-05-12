@@ -191,14 +191,14 @@ export function SearchInput({
         </span>
         <button
           type="button"
-          onClick={() => fillExample("7xKXmP4nD8sRqzT3Fp2Yh9KvA7sBgQ4DeFhJkLmNbW2pNa")}
+          onClick={() => fillExample("7xKXmRrFsHnL3eP2vTQbWzNcA5dM6sV9YpJg4kB8uH1F")}
           className="rounded-[14px] border border-[#FFFFFF12] bg-[#FFFFFF0A] px-2.5 py-[3px] font-mono text-[11px] leading-[14px] text-[#EFEFE4A6] transition-colors hover:border-[#14F1954D] hover:text-[#EFEFE4]"
         >
           {copy.exampleWallet}
         </button>
         <button
           type="button"
-          onClick={() => fillExample("3xK7Pm9k4tQrXzWnE5cHbT8sJ2dGyVrUaP6oYf9BmQr")}
+          onClick={() => fillExample("CLDKtP943CebTrrRsU9SzshhcyNU4ViZNEJ1kUrzuRD4")}
           className="rounded-[14px] border border-[#FFFFFF12] bg-[#FFFFFF0A] px-2.5 py-[3px] font-mono text-[11px] leading-[14px] text-[#EFEFE4A6] transition-colors hover:border-[#14F1954D] hover:text-[#EFEFE4]"
         >
           {copy.examplePda}

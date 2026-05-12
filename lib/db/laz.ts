@@ -65,6 +65,85 @@ export async function listActiveLazPublic(): Promise<ApiResult<Laz[]>> {
   return { data: (data as LazRow[]).map(rowToLaz), error: null };
 }
 
+/**
+ * Resolve a single LAZ for the public profile page by either UUID id or
+ * slug. Bypasses RLS for the same reason as listActiveLazPublic.
+ */
+export async function getLazByIdOrSlugPublic(
+  identifier: string,
+): Promise<ApiResult<Laz | null>> {
+  const supabase = createAdminClient();
+  const looksLikeUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      identifier,
+    );
+  const { data, error } = await supabase
+    .from("laz")
+    .select("*")
+    .eq(looksLikeUuid ? "id" : "slug", identifier)
+    .maybeSingle();
+
+  if (error) {
+    return { data: null, error: { code: "DB_ERROR", message: error.message } };
+  }
+  return {
+    data: data ? rowToLaz(data as LazRow) : null,
+    error: null,
+  };
+}
+
+export interface RecentLazDistribution {
+  distributionDecisionPda: string;
+  receiptPda: string | null;
+  mustahikInitials: string;
+  mustahikRegion: string;
+  amountIdrz: bigint;
+  purpose: string;
+  category: string;
+  occurredAt: string;
+}
+
+/**
+ * Fetch the most recent distributions for a LAZ profile page, joined
+ * with the mustahik's initials + region. Bypasses RLS because this
+ * surface is meant to be public — distributions are anonymised (initials
+ * only) and mirror what /verify already publishes.
+ */
+export async function listRecentDistributionsForLazPublic(
+  lazId: string,
+  limit = 10,
+): Promise<ApiResult<RecentLazDistribution[]>> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("distributions_meta")
+    .select(
+      "distribution_decision_pda, receipt_pda, amount_idrz, purpose_description, category, created_at, receipt_confirmed_at, mustahik:mustahik_id(initials, region)",
+    )
+    .eq("laz_id", lazId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    return { data: null, error: { code: "DB_ERROR", message: error.message } };
+  }
+
+  const items: RecentLazDistribution[] = (data ?? []).map((d) => {
+    const mustahik = Array.isArray(d.mustahik) ? d.mustahik[0] : d.mustahik;
+    return {
+      distributionDecisionPda: d.distribution_decision_pda,
+      receiptPda: d.receipt_pda,
+      mustahikInitials: mustahik?.initials ?? "—",
+      mustahikRegion: mustahik?.region ?? "Indonesia",
+      amountIdrz: BigInt(d.amount_idrz),
+      purpose: d.purpose_description,
+      category: d.category,
+      occurredAt: d.receipt_confirmed_at ?? d.created_at,
+    };
+  });
+
+  return { data: items, error: null };
+}
+
 export async function getLazBySlug(slug: string): Promise<ApiResult<Laz>> {
   const supabase = await createClient();
   const { data, error } = await supabase

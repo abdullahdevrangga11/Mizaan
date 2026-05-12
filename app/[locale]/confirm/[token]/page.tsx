@@ -147,12 +147,16 @@ const copy: Record<Locale, Copy> = {
   },
 };
 
-// ---------- Mock attestation data ----------
+// ---------- Demo attestation data ----------
+// These map to the seeded "Pak Subandi Hartono" chain on Devnet so any
+// /confirm/[token] visit renders a chain whose PDAs resolve to real
+// Solscan accounts. In production this page resolves the magic-link token
+// via POST /api/receipts and reads the actual distribution.
 
-const DONATION_PDA = "3xK7gM4nD8sRqzT9pVbW2fJ5cL1aH6yE0";
-const DISTRIBUTION_PDA = "8mR2cN1KpZv7HtU3jB9wD4sQxF6gY0eA";
+const DONATION_PDA = "CLDKtP943CebTrrRsU9SzshhcyNU4ViZNEJ1kUrzuRD4";
+const DISTRIBUTION_PDA = "2xE5DQgK3sSwQmmaoPGuV2WS2Fdam3Nuv46omK8Q4Ygy";
 // Receipt PDA only "exists" once the mustahik confirms.
-const FAKE_RECEIPT_PDA = "9dL4hM7mPqR2aS5tV8xC1yK0bF3nG6wJ";
+const FAKE_RECEIPT_PDA = "9aux7mq9C3V4jVjCUz8nGKmM3yss2rV4czGny5y1DZHf";
 
 // ---------- Page ----------
 
