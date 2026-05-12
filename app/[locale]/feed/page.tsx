@@ -6,6 +6,7 @@ import { LiveMetrics } from "@/components/feed/live-metrics";
 import type { SupportedLocale } from "@/lib/constants";
 import type { Category, FeedEventType } from "@/lib/types";
 import type { FeedItemView } from "@/components/feed/feed-item";
+import { getFeedPublic, type FeedItemEnriched } from "@/lib/db/feed";
 import { FeedStream } from "./feed-stream";
 
 const COPY = {
@@ -201,9 +202,35 @@ function buildInitialItems(): FeedItemView[] {
   return items;
 }
 
+/** Map a real audit_log row to the page's FeedItemView. */
+function realToView(item: FeedItemEnriched): FeedItemView {
+  return {
+    id: item.id,
+    eventType: item.eventType,
+    amountIdrz: item.amountIdrz === null ? null : item.amountIdrz.toString(),
+    category: item.category,
+    region: item.region,
+    mustahikInitials: item.mustahikInitials,
+    lazSlug: item.lazSlug,
+    lazName: item.lazName,
+    purposeShort: item.purposeShort,
+    occurredAt: item.occurredAt,
+    attestationPda: item.attestationPda ?? "—",
+    fresh: false,
+  };
+}
+
 export default async function FeedPage() {
   const locale = (await getLocale()) as SupportedLocale;
-  const initialItems = buildInitialItems();
+
+  // Try real audit_log via admin client. If we get >= 1 row, use real items;
+  // otherwise fall back to the deterministic mock so the page never renders
+  // empty even before any seed has been run.
+  const { data: realFeed } = await getFeedPublic(50);
+  const initialItems: FeedItemView[] =
+    realFeed && realFeed.length > 0
+      ? realFeed.map(realToView)
+      : buildInitialItems();
 
   // Mock running totals — would be a Supabase aggregation in prod.
   const distributedTodayIdrz = 84_000_000n;

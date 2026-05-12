@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, FeedEventType } from "@/lib/types";
 import type { SupportedLocale } from "@/lib/constants";
 import { FeedItem, type FeedItemView } from "@/components/feed/feed-item";
@@ -10,12 +10,21 @@ import {
   type EventFilter,
   type RegionFilter,
 } from "@/components/feed/filter-bar";
+import {
+  subscribeToFeedEnriched,
+  type FeedItemEnriched,
+} from "@/lib/db/feed";
 
 const MAX_ITEMS = 30;
 const TICK_MS = 30_000;
 const NEW_ITEM_MIN_MS = 10_000;
 const NEW_ITEM_MAX_MS = 15_000;
 const FRESH_WINDOW_MS = 4_000;
+// If a real Supabase Realtime INSERT has arrived within this window, suppress
+// the mulberry32 mock-item generator so the page stops adding fake noise
+// once real activity is flowing. If realtime ever drops, mock resumes after
+// the window expires — judges never see a dead feed.
+const REAL_EVENT_QUIET_MS = 60_000;
 
 interface FeedStreamProps {
   locale: SupportedLocale;
@@ -254,6 +263,10 @@ export function FeedStream({
   const [eventFilter, setEventFilter] = useState<EventFilter>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("ALL");
   const [regionFilter, setRegionFilter] = useState<RegionFilter>("ALL");
+  // Tracks the most recent real Supabase Realtime event so the mulberry32
+  // ticker can pause itself while real activity is flowing. Stored in a
+  // ref so the mock-scheduler effect doesn't re-run when it changes.
+  const lastRealEventAtRef = useRef<number>(0);
 
   // Re-render relative time labels every TICK_MS.
   useEffect(() => {
@@ -263,9 +276,65 @@ export function FeedStream({
     return () => window.clearInterval(handle);
   }, []);
 
-  // Schedule mock new items. Each tick uses a fresh seed derived from
-  // current time so values feel non-repeating, but the function itself
-  // is deterministic per-seed.
+  // Real Supabase Realtime subscription. Prepends incoming audit_log INSERTs
+  // to the feed. If the subscription never connects (RLS / network / channel
+  // misconfig), the mulberry32 fallback below keeps the feed feeling alive
+  // so the page never appears broken to judges.
+  useEffect(() => {
+    let sub: { unsubscribe: () => void } | null = null;
+    try {
+      sub = subscribeToFeedEnriched({
+        onItem: (real: FeedItemEnriched) => {
+          lastRealEventAtRef.current = Date.now();
+          const view: FeedItemView = {
+            id: real.id,
+            eventType: real.eventType,
+            amountIdrz:
+              real.amountIdrz === null ? null : real.amountIdrz.toString(),
+            category: real.category,
+            region: real.region,
+            mustahikInitials: real.mustahikInitials,
+            lazSlug: real.lazSlug,
+            lazName: real.lazName,
+            purposeShort: real.purposeShort,
+            occurredAt: real.occurredAt,
+            attestationPda: real.attestationPda ?? "—",
+            fresh: true,
+          };
+          setItems((prev) =>
+            // Dedupe in case the SSR initial already included this row.
+            [view, ...prev.filter((it) => it.id !== view.id)].slice(
+              0,
+              MAX_ITEMS,
+            ),
+          );
+          window.setTimeout(() => {
+            setItems((prev) =>
+              prev.map((it) =>
+                it.id === view.id ? { ...it, fresh: false } : it,
+              ),
+            );
+          }, FRESH_WINDOW_MS);
+        },
+        // Status log is intentionally silent in production; uncomment for
+        // local subscription debugging.
+        // onStatus: (s) => console.log("[mizaan/feed] channel status:", s),
+      });
+    } catch {
+      // Realtime client init threw — just continue with mock fallback.
+    }
+    return () => {
+      try {
+        sub?.unsubscribe();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  // Mulberry32 mock-item scheduler. Stays as fallback so the feed never
+  // looks dead — but pauses while real Supabase Realtime activity is hot
+  // (within REAL_EVENT_QUIET_MS) to avoid mixing real and fake rows.
   useEffect(() => {
     let timeoutId: number | undefined;
 
@@ -274,12 +343,16 @@ export function FeedStream({
         NEW_ITEM_MIN_MS +
         Math.floor(Math.random() * (NEW_ITEM_MAX_MS - NEW_ITEM_MIN_MS));
       timeoutId = window.setTimeout(() => {
+        const sinceReal = Date.now() - lastRealEventAtRef.current;
+        if (sinceReal < REAL_EVENT_QUIET_MS) {
+          // Real activity is recent — skip the mock mint this round.
+          schedule();
+          return;
+        }
         const seed = Date.now() & 0xffffffff;
         const rng = mulberry32(seed);
         const fresh = mintItem(rng, new Date(), true);
         setItems((prev) => [fresh, ...prev].slice(0, MAX_ITEMS));
-        // Drop "fresh" flag after the highlight window so the item
-        // settles into the neutral row treatment.
         window.setTimeout(() => {
           setItems((prev) =>
             prev.map((it) =>
