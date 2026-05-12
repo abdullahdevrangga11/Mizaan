@@ -97,3 +97,86 @@ export async function listDonationsByDonorWallet(
     error: null,
   };
 }
+
+export interface FeaturedTrailView {
+  donationCommitmentPda: string;
+  donationCreatedAt: string;
+  distributionDecisionPda: string;
+  distributionDecidedAt: string;
+  receiptPda: string;
+  receiptConfirmedAt: string;
+  mustahikName: string;
+  mustahikRegion: string;
+  amountIdrz: bigint;
+  purpose: string;
+  category: Category;
+  thankYouMessage: string | null;
+}
+
+/**
+ * Fetch the most recent fully-confirmed donation chain for a donor wallet,
+ * joined with the mustahik on the chosen distribution. Returns `null` when
+ * the wallet has no seeded data yet — caller falls back to mock.
+ */
+export async function getFeaturedTrailForWallet(
+  walletAddress: string
+): Promise<ApiResult<FeaturedTrailView | null>> {
+  const supabase = await createClient();
+
+  const { data: donation, error: donationErr } = await supabase
+    .from("donations_meta")
+    .select("*")
+    .eq("donor_wallet", walletAddress)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (donationErr) {
+    return {
+      data: null,
+      error: { code: "DB_ERROR", message: donationErr.message },
+    };
+  }
+  if (!donation) return { data: null, error: null };
+
+  const { data: dist, error: distErr } = await supabase
+    .from("distributions_meta")
+    .select(
+      "distribution_decision_pda, created_at, receipt_pda, receipt_confirmed_at, amount_idrz, purpose_description, category, thank_you_message_encrypted, mustahik:mustahik_id(full_name, region)"
+    )
+    .eq("donation_commitment_pda", donation.donation_commitment_pda)
+    .not("receipt_pda", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (distErr) {
+    return {
+      data: null,
+      error: { code: "DB_ERROR", message: distErr.message },
+    };
+  }
+  if (!dist || !dist.receipt_pda || !dist.receipt_confirmed_at) {
+    return { data: null, error: null };
+  }
+
+  const mustahik = Array.isArray(dist.mustahik) ? dist.mustahik[0] : dist.mustahik;
+
+  return {
+    data: {
+      donationCommitmentPda: donation.donation_commitment_pda,
+      donationCreatedAt: donation.created_at,
+      distributionDecisionPda: dist.distribution_decision_pda,
+      distributionDecidedAt: dist.created_at,
+      receiptPda: dist.receipt_pda,
+      receiptConfirmedAt: dist.receipt_confirmed_at,
+      mustahikName: mustahik?.full_name ?? "Anonymous mustahik",
+      mustahikRegion: mustahik?.region ?? "Indonesia",
+      amountIdrz: BigInt(dist.amount_idrz),
+      purpose: dist.purpose_description,
+      category: dist.category as Category,
+      thankYouMessage: dist.thank_you_message_encrypted,
+    },
+    error: null,
+  };
+}

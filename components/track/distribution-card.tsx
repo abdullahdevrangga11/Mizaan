@@ -150,9 +150,14 @@ function ChainStep({
         <div className="font-mono text-[10px] leading-3 uppercase tracking-[0.05em] text-[#EFEFE46B]">
           {pdaLabel}
         </div>
-        <div className="mt-0.5 font-mono text-[11px] leading-[14px] text-[#14F195] underline decoration-1 underline-offset-2">
+        <a
+          href={`https://solscan.io/account/${pda}?cluster=devnet`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-0.5 inline-block font-mono text-[11px] leading-[14px] text-[#14F195] underline decoration-1 underline-offset-2 transition-opacity hover:opacity-80"
+        >
           {shortenAddress(pda, 7, 6)} ↗
-        </div>
+        </a>
       </div>
     </div>
   );

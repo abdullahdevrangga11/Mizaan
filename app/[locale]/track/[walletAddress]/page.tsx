@@ -3,12 +3,46 @@ import { FooterReveal } from "@/components/footer-reveal";
 import { DonorSummary } from "@/components/track/donor-summary";
 import type { DistributionView } from "@/components/track/distribution-card";
 import type { SupportedLocale } from "@/lib/constants";
+import { getFeaturedTrailForWallet } from "@/lib/db/donations";
 import { TrackBody } from "./track-body";
 import { trackCopy } from "./track-copy";
 
+/**
+ * Format an ISO timestamp into the design's display format:
+ * `22 apr 2026 · 14:32 wib` (Asia/Jakarta, locale id).
+ */
+function formatWib(iso: string): string {
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  })
+    .format(d)
+    .toLowerCase()
+    .replace(/\./g, "");
+  const time = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jakarta",
+  }).format(d);
+  return `${date} · ${time} wib`;
+}
+
+function iconKindForCategory(category: string): DistributionView["iconKind"] {
+  if (category === "PENDIDIKAN") return "school";
+  if (category === "KESEHATAN") return "medical";
+  if (category === "MODAL_USAHA") return "shop";
+  return "basket";
+}
+
 // ─── mock data — 1 featured + 26 others = 27 distributions total ─────────────
 
-const SARAH_WALLET = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
+// Matches DEMO_DONORS[0].wallet in scripts/seed-demo-chains.ts — when the
+// demo seed is run, this wallet has a real on-chain chain to surface.
+const SARAH_WALLET = "7xKXmRrFsHnL3eP2vTQbWzNcA5dM6sV9YpJg4kB8uH1F";
 const COMMITMENT_PDA = "3xK7Pm9TdRzN5kWfQ8sLpV2bX4nM7jH9aE1cYf9BmQr";
 const COMMITMENT_AT = "22 apr 2026 · 14:32 wib";
 
@@ -149,6 +183,30 @@ export default async function DonorTrackPage({ params }: PageProps) {
 
   const wallet = walletAddress || SARAH_WALLET;
 
+  // Try to pull a real seeded chain from Supabase. If found, overlay its real
+  // on-chain PDAs onto the featured card so the demo's PDA links resolve to
+  // actual Solscan pages. Otherwise fall back to the static mock.
+  const { data: realTrail } = await getFeaturedTrailForWallet(wallet);
+
+  const featured: DistributionView = realTrail
+    ? {
+        ...FEATURED,
+        mustahikDisplayName: realTrail.mustahikName,
+        purpose: realTrail.purpose,
+        region: realTrail.mustahikRegion,
+        category: realTrail.category,
+        amountIdrz: realTrail.amountIdrz,
+        donationCommitmentPda: realTrail.donationCommitmentPda,
+        donationSignedAt: formatWib(realTrail.donationCreatedAt),
+        distributionDecisionPda: realTrail.distributionDecisionPda,
+        distributionDecidedAt: formatWib(realTrail.distributionDecidedAt),
+        receiptPda: realTrail.receiptPda,
+        receiptConfirmedAt: formatWib(realTrail.receiptConfirmedAt),
+        iconKind: iconKindForCategory(realTrail.category),
+        thankYouMessage: realTrail.thankYouMessage ?? FEATURED.thankYouMessage,
+      }
+    : FEATURED;
+
   return (
     <>
       <Navbar locale={locale} variant="compact" />
@@ -165,7 +223,7 @@ export default async function DonorTrackPage({ params }: PageProps) {
 
           <TrackBody
             locale={locale}
-            featured={FEATURED}
+            featured={featured}
             others={OTHERS}
             wallet={wallet}
             totalRupiahDisplay="Rp 22,000,000"

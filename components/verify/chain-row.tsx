@@ -197,17 +197,21 @@ export function ChainRow({ index, total, distribution, copy }: ChainRowProps) {
 
                 {/* PDA */}
                 <a
-                  href="#"
-                  className="min-w-0 grow basis-0 truncate font-mono text-[12px] leading-4 text-[#14F195] underline decoration-1 underline-offset-2 sm:text-[13px]"
+                  href={`https://solscan.io/account/${step.pda}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 grow basis-0 truncate font-mono text-[12px] leading-4 text-[#14F195] underline decoration-1 underline-offset-2 transition-opacity hover:opacity-80 sm:text-[13px]"
                 >
                   {shortenAddress(step.pda, 14, 6)}
                 </a>
 
                 {/* Action */}
                 <a
-                  href="#"
+                  href={`https://solscan.io/account/${step.pda}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={copy.explorer}
-                  className="flex w-[40px] shrink-0 justify-end font-mono text-[13px] leading-4 text-[#14F195] sm:w-[60px]"
+                  className="flex w-[40px] shrink-0 justify-end font-mono text-[13px] leading-4 text-[#14F195] transition-opacity hover:opacity-80 sm:w-[60px]"
                 >
                   ↗
                 </a>
