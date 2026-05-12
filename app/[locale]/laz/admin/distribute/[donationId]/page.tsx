@@ -15,6 +15,7 @@ import type { DistributionRowData } from "@/components/laz-admin/distribution-ro
 import type { PickerMustahik } from "@/components/laz-admin/mustahik-picker";
 import type { Category, DonationType } from "@/lib/types";
 import type { SupportedLocale } from "@/lib/constants";
+import { requireLazAdminSession } from "@/lib/auth/laz-session";
 
 export const metadata: Metadata = {
   title: "distribusi · laz admin · mizaan",
@@ -139,6 +140,14 @@ const MUSTAHIK_POOL: PickerMustahik[] = [
 export default async function LazAdminDistributePage({ params }: PageProps) {
   const { donationId } = await params;
   const locale = (await getLocale()) as SupportedLocale;
+  const safeLocale: SupportedLocale = locale === "en" ? "en" : "id";
+
+  // Auth gate. No session -> redirect to /laz/login preserving this URL.
+  await requireLazAdminSession(
+    safeLocale,
+    `/${safeLocale}/laz/admin/distribute/${donationId}`,
+  );
+
   const donation = getMockDonation(donationId);
 
   return (
